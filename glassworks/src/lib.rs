@@ -1,9 +1,9 @@
 pub fn ecb_calc(row: &[u8]) -> u8 {
-    row.iter().skip(1).fold(u16::from(row[0]), |acc, b| {
+    row.iter().map(|b| *b as u16).reduce(|acc, b| {
         let acc_carry = acc >> 8;
         let acc_value = acc & 0xff;
-        acc_value + u16::from(*b) + (1 - acc_carry)
-    }) as u8
+        acc_value + b + (1 - acc_carry)
+    }).unwrap() as u8
 }
 
 #[cfg(test)]
