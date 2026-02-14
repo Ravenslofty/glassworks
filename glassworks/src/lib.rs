@@ -50,7 +50,7 @@ impl Device {
     }
 }
 
-struct Bitstream {
+pub struct Bitstream {
     device: Device,
     data_type: u8,
 }
