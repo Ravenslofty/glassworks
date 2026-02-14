@@ -1,0 +1,41 @@
+# layout created on Sat Feb 14 20:18:24 2026
+# with SWVERSION
+# library example
+# definition nand
+# layout mpa1036
+(layout
+	(key "mpa1000" "mpa1036" (transform 1 0 0 1 0 0) )
+(n 0 "a" 1)
+(n 1 "_" 1)
+(n 0 "b" 1)
+(n 1 "_" 1)
+(n 0 "q" 1)
+(n 1 "_" 1)
+	(shape 0 0 0 78 78 8
+(e 9 2 4 0 1 1)
+(e 9 2 8 0 1568 1)
+(e 8 13 1 0 768 1)
+(e 9 13 1 0 521 1)
+(e 9 13 2 1 20 1)
+(e 9 13 3 0 327681 1)
+(e 7 13 1 0 521 3)
+(e 7 13 2 1 20 3)
+(e 7 13 3 0 270337 3)
+(e 8 13 0 0 640 3)
+(e 7 2 4 0 1 3)
+(e 7 2 8 0 1568 3)
+(e 8 13 3 0 2 5)
+(e 8 13 7 0 262161 5)
+(e 4 2 4 2 2 5)
+(e 4 2 6 0 400 5)
+(e 4 13 7 0 48 5)
+	(element 8 0 3 0 0 %x0 (net "a")(port "a" 0))
+	(element 6 0 3 0 0 %x0 (net "b")(port "b" 0))
+	(element 4 0 3 0 0 %x0 (net "q")(port "q" 0))
+		)
+(p 0 "ai" "in" (t 1 0 0 1 8 0))
+(p 0 "bi" "in" (t 1 0 0 1 6 0))
+(p 0 "nd2" "ab" (t -1 0 0 1 8 13))
+(p 0 "qo" "out" (t 1 0 0 1 4 0))
+	(status 1)
+)
