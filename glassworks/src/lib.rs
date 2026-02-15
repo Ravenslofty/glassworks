@@ -1,4 +1,4 @@
-use std::io::{Read, self};
+use std::io::{Read, Write, self};
 
 pub fn ecb_calc(row: &[u8]) -> u8 {
     row.iter().map(|b| *b as u16).reduce(|acc, b| {
@@ -78,6 +78,10 @@ impl Bitstream {
         assert_eq!(data_type & 0x4, 0, "compressed data mode unsupported");
         assert_eq!(data_type & 0xF8, 0, "must-be-zero section not zero");
 
+        let mut f = std::fs::File::create("image.ppm")?;
+        writeln!(f, "P1")?;
+        writeln!(f, "{} {}", 8 * device.bytes_per_row(), device.rows());
+
         // for each row:
         for row_index in 0..device.rows() {
             let mut row = vec![0; device.bytes_per_row()];
@@ -86,7 +90,11 @@ impl Bitstream {
             for column_index in 0..(device.bytes_per_row()-1) {
                 for bit in 0..8 {
                     if (row[column_index] & (1 << bit)) != 0 {
-                        println!("{row_index}:{column_index}:{bit}");
+                        match (row_index, column_index, bit) {
+                            (138, 100, 0) => println!("{row_index}:{column_index}:{bit} = peripheral bus thingy uninverted?"),
+                            (138, 100, 1) => println!("{row_index}:{column_index}:{bit} = peripheral bus thingy inverted?"),
+                            _ => println!("{row_index}:{column_index}:{bit}"),
+                        }
                     }
                 }
             }

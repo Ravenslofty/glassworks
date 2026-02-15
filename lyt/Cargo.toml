@@ -1,0 +1,7 @@
+[package]
+name = "lyt"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lexpr = "0.2.7"
