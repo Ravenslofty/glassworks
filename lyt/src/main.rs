@@ -6,16 +6,9 @@ use lexpr::Value;
 
 #[derive(Debug, Default)]
 struct Element {
-    first_five: (i64, i64, i64, i64, i64),
-    sixth: i64,
-    net: String,
-    port_name: String,
-    port_index: i64,
-}
-
-#[derive(Debug, Default)]
-struct E {
     transform: (i64, i64, i64, i64, i64, i64),
+    net: Option<String>,
+    port: Option<(String, i64)>,
 }
 
 #[derive(Debug, Default)]
@@ -23,11 +16,28 @@ struct Layout {
     key_transform: (i64, i64, i64, i64, i64, i64),
     shape_transform: (i64, i64, i64, i64, i64, i64),
     elements: Vec<Element>,
-    e: Vec<E>,
 }
 
 impl Layout {
     pub fn new(r: impl Read) -> Option<Self> {
+        let parse_number = |v: &Value| -> Option<i64> {
+            if v.is_number() {
+                v.as_number()?.as_i64()
+            } else if v.is_symbol() {
+                let s = v.as_symbol()?;
+                let radix = if s.starts_with("%x") {
+                    16
+                } else if s.starts_with("%b") {
+                    2
+                } else {
+                    panic!("don't know radix of symbol '{s}'");
+                };
+                i64::from_str_radix(&s[2..], radix).ok()
+            } else {
+                panic!("don't know how to parse '{v:?}' as number");
+            }
+        };
+
         let mut this = Self::default();
 
         let layout = lexpr::from_reader(r).ok()?;
@@ -47,12 +57,12 @@ impl Layout {
                     assert!(item[3].is_cons());
                     let t = item[3].to_vec()?;
                     assert_eq!(t[0].as_symbol().unwrap(), "t");
-                    this.key_transform.0 = t[1].as_number()?.as_i64()?;
-                    this.key_transform.1 = t[2].as_number()?.as_i64()?;
-                    this.key_transform.2 = t[3].as_number()?.as_i64()?;
-                    this.key_transform.3 = t[4].as_number()?.as_i64()?;
-                    this.key_transform.4 = t[5].as_number()?.as_i64()?;
-                    this.key_transform.5 = t[6].as_number()?.as_i64()?;
+                    this.key_transform.0 = parse_number(&t[1])?;
+                    this.key_transform.1 = parse_number(&t[2])?;
+                    this.key_transform.2 = parse_number(&t[3])?;
+                    this.key_transform.3 = parse_number(&t[4])?;
+                    this.key_transform.4 = parse_number(&t[5])?;
+                    this.key_transform.5 = parse_number(&t[6])?;
                     assert_matches!(this.key_transform, (1, 0, 0, 1, _, _));
                     assert_matches!(
                         (this.key_transform.4, this.key_transform.5),
@@ -79,12 +89,12 @@ impl Layout {
                     assert_eq!(r#use[2].as_str()?, "(null)");
                 }
                 "shape" => {
-                    this.shape_transform.0 = item[1].as_number()?.as_i64()?;
-                    this.shape_transform.1 = item[2].as_number()?.as_i64()?;
-                    this.shape_transform.2 = item[3].as_number()?.as_i64()?;
-                    this.shape_transform.3 = item[4].as_number()?.as_i64()?;
-                    this.shape_transform.4 = item[5].as_number()?.as_i64()?;
-                    this.shape_transform.5 = item[6].as_number()?.as_i64()?;
+                    this.shape_transform.0 = parse_number(&item[1])?;
+                    this.shape_transform.1 = parse_number(&item[2])?;
+                    this.shape_transform.2 = parse_number(&item[3])?;
+                    this.shape_transform.3 = parse_number(&item[4])?;
+                    this.shape_transform.4 = parse_number(&item[5])?;
+                    this.shape_transform.5 = parse_number(&item[6])?;
                     assert_eq!(this.shape_transform, (0, 0, 0, 0, 0, 8));
                     let item = item.to_vec()?;
                     for item in item.iter().skip(7) {
@@ -92,41 +102,41 @@ impl Layout {
                         match symbol.as_str() {
                             "element" => {
                                 let mut element = Element::default();
-                                element.first_five.0 = item[1].as_number()?.as_i64()?;
-                                element.first_five.1 = item[2].as_number()?.as_i64()?;
-                                element.first_five.2 = item[3].as_number()?.as_i64()?;
-                                element.first_five.3 = item[4].as_number()?.as_i64()?;
-                                element.first_five.4 = item[5].as_number()?.as_i64()?;
-                                element.sixth =
-                                    i64::from_str_radix(&item[6].as_symbol()?[2..], 16).ok()?;
+                                element.transform.0 = parse_number(&item[1])?;
+                                element.transform.1 = parse_number(&item[2])?;
+                                element.transform.2 = parse_number(&item[3])?;
+                                element.transform.3 = parse_number(&item[4])?;
+                                element.transform.4 = parse_number(&item[5])?;
+                                element.transform.5 = parse_number(&item[6])?;
                                 let net = item[7].to_vec()?;
                                 assert_eq!(net[0].as_symbol()?, "net");
-                                element.net = net[1].as_str()?.to_string();
+                                element.net = Some(net[1].as_str()?.to_string());
                                 let port = item[8].to_vec()?;
                                 assert_eq!(port[0].as_symbol()?, "port");
-                                element.port_name = port[1].as_str()?.to_string();
-                                element.port_index = port[2].as_number()?.as_i64()?;
+                                let port_name = port[1].as_str()?.to_string();
+                                let port_index = port[2].as_number()?.as_i64()?;
+                                element.port = Some((port_name, port_index));
                                 this.elements.push(element);
                             }
                             "e" => {
-                                let mut e = E::default();
-                                e.transform.0 = item[1].as_number()?.as_i64()?;
-                                e.transform.1 = item[2].as_number()?.as_i64()?;
-                                e.transform.2 = item[3].as_number()?.as_i64()?;
-                                e.transform.3 = item[4].as_number()?.as_i64()?;
-                                e.transform.4 = item[5].as_number()?.as_i64()?;
-                                e.transform.5 = item[6].as_number()?.as_i64()?;
-                                assert_matches!(e.transform, (0, 0, 2, _, _, 0));
+                                let mut element = Element::default();
+                                element.transform.0 = parse_number(&item[1])?;
+                                element.transform.1 = parse_number(&item[2])?;
+                                element.transform.2 = parse_number(&item[3])?;
+                                element.transform.3 = parse_number(&item[4])?;
+                                element.transform.4 = parse_number(&item[5])?;
+                                element.transform.5 = parse_number(&item[6])?;
+                                assert_matches!(element.transform, (0, 0, 2, _, _, 0));
                                 assert_matches!(
-                                    e.transform.3,
+                                    element.transform.3,
                                     /* AND/OR */ 0 | /* XOR */ 4 | /* DL */ 5
                                 );
                                 assert_matches!(
-                                    e.transform.4,
+                                    element.transform.4,
                                     /* DF */
                                     14 | /* DFR */ 15 | /* AND/OR/XOR */ 28 | /* DFE */ 30 | /* DFER */ 31
                                 );
-                                this.e.push(e);
+                                this.elements.push(element);
                             }
                             unknown_keyword => {
                                 unimplemented!("keyword '{unknown_keyword}' inside layout::shape")
@@ -142,7 +152,7 @@ impl Layout {
     }
 
     pub fn element_by_port_name(&self, port_name: &str) -> Option<&Element> {
-        self.elements.iter().find(|e| e.port_name == port_name)
+        self.elements.iter().find(|e| e.port.as_ref().and_then(|(name, _)| Some(name == port_name)).unwrap_or(false))
     }
 }
 
