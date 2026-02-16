@@ -14,11 +14,16 @@ struct Element {
 }
 
 #[derive(Debug, Default)]
+struct E {
+    transform: (i64, i64, i64, i64, i64, i64),
+}
+
+#[derive(Debug, Default)]
 struct Layout {
     key_transform: (i64, i64, i64, i64, i64, i64),
     shape_transform: (i64, i64, i64, i64, i64, i64),
     elements: Vec<Element>,
-    e_transform: (i64, i64, i64, i64, i64, i64),
+    e: Vec<E>,
 }
 
 impl Layout {
@@ -104,22 +109,24 @@ impl Layout {
                                 this.elements.push(element);
                             }
                             "e" => {
-                                this.e_transform.0 = item[1].as_number()?.as_i64()?;
-                                this.e_transform.1 = item[2].as_number()?.as_i64()?;
-                                this.e_transform.2 = item[3].as_number()?.as_i64()?;
-                                this.e_transform.3 = item[4].as_number()?.as_i64()?;
-                                this.e_transform.4 = item[5].as_number()?.as_i64()?;
-                                this.e_transform.5 = item[6].as_number()?.as_i64()?;
-                                assert_matches!(this.e_transform, (0, 0, 2, _, _, 0));
+                                let mut e = E::default();
+                                e.transform.0 = item[1].as_number()?.as_i64()?;
+                                e.transform.1 = item[2].as_number()?.as_i64()?;
+                                e.transform.2 = item[3].as_number()?.as_i64()?;
+                                e.transform.3 = item[4].as_number()?.as_i64()?;
+                                e.transform.4 = item[5].as_number()?.as_i64()?;
+                                e.transform.5 = item[6].as_number()?.as_i64()?;
+                                assert_matches!(e.transform, (0, 0, 2, _, _, 0));
                                 assert_matches!(
-                                    this.e_transform.3,
-                                    /* AND/OR */ 0 | /* XOR */ 4
+                                    e.transform.3,
+                                    /* AND/OR */ 0 | /* XOR */ 4 | /* DL */ 5
                                 );
                                 assert_matches!(
-                                    this.e_transform.4,
+                                    e.transform.4,
                                     /* DF */
                                     14 | /* DFR */ 15 | /* AND/OR/XOR */ 28 | /* DFE */ 30 | /* DFER */ 31
                                 );
+                                this.e.push(e);
                             }
                             unknown_keyword => {
                                 unimplemented!("keyword '{unknown_keyword}' inside layout::shape")
