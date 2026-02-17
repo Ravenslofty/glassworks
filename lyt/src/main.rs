@@ -197,8 +197,7 @@ impl Layout {
                             const FBB_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
                             const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
                             const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
-                            /// Possibly a mux-enable bit
-                            const UNKNOWN_BIT9: i64 = 0b10_0000_0000;
+                            const MUX_ENABLE: i64 = 0b10_0000_0000;
 
                             println!("    Z=0 - A input mux:");
                             if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
@@ -229,9 +228,13 @@ impl Layout {
                             if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
                                 println!("        11 ---- ----: F local interconnect");
                             }
-                            if config & UNKNOWN_BIT9 == 0 {
-                                println!("        0- ---- ----: mux enable? = 0");
-                                should_break = true;
+                            if config & MUX_ENABLE == 0 {
+                                println!("        0- ---- ----: mux disabled");
+                            }
+                            match properties {
+                                0 => println!("        properties=0: normal"),
+                                1 => println!("        properties=1: inverted"),
+                                _ => panic!("unknown properties {properties}"),
                             }
                         }
                         1 => {
@@ -248,8 +251,7 @@ impl Layout {
                             const FF_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
                             const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
                             const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
-                            /// Possibly a mux-enable bit
-                            const UNKNOWN_BIT9: i64 = 0b10_0000_0000;
+                            const MUX_ENABLE: i64 = 0b10_0000_0000;
 
                             println!("    Z=1 - B input mux:");
                             if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
@@ -280,19 +282,24 @@ impl Layout {
                             if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
                                 println!("        11 ---- ----: F local interconnect");
                             }
-                            if config & UNKNOWN_BIT9 == 0 {
-                                println!("        0- ---- ----: mux enable? = 0");
-                                should_break = true;
+                            if config & MUX_ENABLE == 0 {
+                                println!("        0- ---- ----: mux disabled");
+                            }
+                            match properties {
+                                0 => println!("        properties=0: normal"),
+                                1 => println!("        properties=1: inverted"),
+                                _ => panic!("unknown properties {properties}"),
                             }
                         }
                         2 => {
                             assert!(config <= 1023, "2: {config} has more than 10 config bits");
                             println!("    Z=2 - ??: {config:010b}");
                             match properties {
-                                0 => println!("        properties=0 - logic element"),
-                                1 => println!("        properties=1 - buffer"),
-                                2 => println!("        properties=2 - pull-up"),
-                                3 => println!("        properties=3 - pull-down"),
+                                0 => println!("        properties=0: logic element"),
+                                1 => println!("        properties=1: buffer"),
+                                2 => println!("        properties=2: pull-up"),
+                                3 => println!("        properties=3: pull-down"),
+                                4 => println!("        properties=4: xor???"),
                                 _ => panic!("unknown properties {properties}"),
                             }
                             if properties == 1 {
@@ -335,7 +342,9 @@ impl Layout {
 
                             println!("    Z=3 - Q output mux??:");
                             if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                                println!("        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
+                                println!(
+                                    "        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)"
+                                );
                             }
                             if config & LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
                                 == LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
@@ -407,34 +416,151 @@ impl Layout {
                                 should_break = true;
                             }
                             if config & UNKNOWN_BIT18 == UNKNOWN_BIT18 {
-                                println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1 (buffer?)");
+                                println!(
+                                    "        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1 (buffer?)"
+                                );
                             }
                         }
                         4 => {
                             assert!(config <= 1023, "4: {config} has more than 10 config bits");
                             println!("    Z=4 - ??: {config:010b}");
-                            should_break = true;
+                            //should_break = true;
                         }
                         5 => {
                             assert!(config <= 1023, "5: {config} has more than 10 config bits");
                             println!("    Z=5 - ??: {config:010b}");
-                            should_break = true;
+                            //should_break = true;
                         }
                         6 => {
                             assert!(config <= 3, "X Bus: {config} has more than 2 config bits");
                             println!("    Z=6 - X Bus:");
-                            const VERTICAL_MEDIUM_BUS: i64 = 0b01;
-                            const HORIZONTAL_MEDIUM_BUS: i64 = 0b10;
-                            if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
-                                println!("        -1: vertical medium bus");
+                            const LEFT_VERTICAL_MEDIUM_BUS: i64 = 0b01;
+                            const BELOW_HORIZONTAL_MEDIUM_BUS: i64 = 0b10;
+                            if config & LEFT_VERTICAL_MEDIUM_BUS == LEFT_VERTICAL_MEDIUM_BUS {
+                                println!("        -1: connect to left vertical medium bus");
                             }
-                            if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
-                                println!("        1-: horizontal medium bus");
+                            if config & BELOW_HORIZONTAL_MEDIUM_BUS == BELOW_HORIZONTAL_MEDIUM_BUS {
+                                println!("        1-: connect to below horizontal medium bus");
                             }
                         }
                         7 => {
-                            assert!(config <= 524287, "function: {config} has more than 19 config bits");
+                            assert!(
+                                config <= 524287,
+                                "function: {config} has more than 19 config bits"
+                            );
+                            const UNKNOWN_BIT0: i64 = 0b000_0000_0000_0000_0001;
+                            // Never set?
+                            const UNKNOWN_BIT1: i64 = 0b000_0000_0000_0000_0010;
+                            const BELOW_HORIZONTAL_MEDIUM_BUS: i64 = 0b000_0000_0000_0000_0100;
+                            const LEFT_VERTICAL_MEDIUM_BUS: i64 = 0b000_0000_0000_0000_1000;
+                            const ABOVE_HORIZONTAL_MEDIUM_BUS: i64 = 0b000_0000_0000_0001_0000;
+                            const RIGHT_VERTICAL_MEDIUM_BUS: i64 = 0b000_0000_0000_0010_0000;
+                            // Never set?
+                            const UNKNOWN_BIT6: i64 = 0b000_0000_0000_0100_0000;
+                            // Never set?
+                            const UNKNOWN_BIT7: i64 = 0b000_0000_0000_1000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT8: i64 = 0b000_0000_0001_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT9: i64 = 0b000_0000_0010_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT10: i64 = 0b000_0000_0100_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT11: i64 = 0b000_0000_1000_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT12: i64 = 0b000_0001_0000_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT13: i64 = 0b000_0010_0000_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT14: i64 = 0b000_0100_0000_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT15: i64 = 0b000_1000_0000_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT16: i64 = 0b001_0000_0000_0000_0000;
+                            // Never set?
+                            const UNKNOWN_BIT17: i64 = 0b010_0000_0000_0000_0000;
+                            const UNKNOWN_BIT18: i64 = 0b100_0000_0000_0000_0000;
+
                             println!("    Z=7 - function??: {config:019b}");
+                            if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
+                                println!("        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1");
+                            }
+                            if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
+                                println!("        --- ---- ---- ---- --1-: UNKNOWN bit 1 = 1");
+                                should_break = true;
+                            }
+                            if config & BELOW_HORIZONTAL_MEDIUM_BUS == BELOW_HORIZONTAL_MEDIUM_BUS {
+                                println!(
+                                    "        --- ---- ---- ---- -1--: output to below horizontal medium bus"
+                                );
+                            }
+                            if config & LEFT_VERTICAL_MEDIUM_BUS == LEFT_VERTICAL_MEDIUM_BUS {
+                                println!(
+                                    "        --- ---- ---- ---- 1---: output to left vertical medium bus"
+                                );
+                            }
+                            if config & ABOVE_HORIZONTAL_MEDIUM_BUS == ABOVE_HORIZONTAL_MEDIUM_BUS {
+                                println!(
+                                    "        --- ---- ---- ---1 ----: output to above horizontal medium bus"
+                                );
+                            }
+                            if config & RIGHT_VERTICAL_MEDIUM_BUS == RIGHT_VERTICAL_MEDIUM_BUS {
+                                println!(
+                                    "        --- ---- ---- --1- ----: output to right vertical medium bus"
+                                );
+                            }
+                            if config & UNKNOWN_BIT6 == UNKNOWN_BIT15 {
+                                println!("        --- ---- -1-- ---- ----: UNKNOWN bit 6 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT7 == UNKNOWN_BIT7 {
+                                println!("        --- ---- ---- 1--- ----: UNKNOWN bit 7 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT8 == UNKNOWN_BIT8 {
+                                println!("        --- ---- ---1 ---- ----: UNKNOWN bit 8 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT9 == UNKNOWN_BIT9 {
+                                println!("        --- ---- --1- ---- ----: UNKNOWN bit 9 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT10 == UNKNOWN_BIT10 {
+                                println!("        --- ---- -1-- ---- ----: UNKNOWN bit 10 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT11 == UNKNOWN_BIT11 {
+                                println!("        --- ---- 1--- ---- ----: UNKNOWN bit 11 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT12 == UNKNOWN_BIT12 {
+                                println!("        --- ---1 ---- ---- ----: UNKNOWN bit 12 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT13 == UNKNOWN_BIT15 {
+                                println!("        --- --1- ---- ---- ----: UNKNOWN bit 13 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT14 == UNKNOWN_BIT14 {
+                                println!("        --- -1-- ---- ---- ----: UNKNOWN bit 14 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT15 == UNKNOWN_BIT15 {
+                                println!("        --- 1--- ---- ---- ----: UNKNOWN bit 15 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT16 == UNKNOWN_BIT16 {
+                                println!("        --1 ---- ---- ---- ----: UNKNOWN bit 16 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT17 == UNKNOWN_BIT17 {
+                                println!("        -1- ---- ---- ---- ----: UNKNOWN bit 17 = 1");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT18 == UNKNOWN_BIT18 {
+                                println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1");
+                                //should_break = true;
+                            }
                         }
                         8 => {
                             assert!(config <= 1023, "8: {config} has more than 10 config bits");
