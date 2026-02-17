@@ -1,4 +1,5 @@
 use std::assert_matches;
+use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
 use std::io::{self, Read};
 
@@ -6,7 +7,12 @@ use lexpr::Value;
 
 #[derive(Debug, Default)]
 struct Element {
-    transform: (i64, i64, i64, i64, i64, i64),
+    x: i64,
+    y: i64,
+    z: i64,
+    properties: i64,
+    config: i64,
+    net_idx: i64,
     net: Option<String>,
     port: Option<(String, i64)>,
 }
@@ -40,7 +46,7 @@ impl Layout {
 
         let mut this = Self::default();
 
-        let layout = lexpr::from_reader(r).ok()?;
+        let layout = lexpr::from_reader(r).unwrap();
         let layout = layout.to_vec()?;
         assert_eq!(layout[0].as_symbol(), Some("layout"));
 
@@ -53,26 +59,27 @@ impl Layout {
                 }
                 "key" => {
                     assert_eq!(item[1].as_str().unwrap(), "mpa1000");
-                    assert_eq!(item[2].as_str().unwrap(), "mpa1000");
+                    assert_matches!(item[2].as_str().unwrap(), "mpa1000" | "mpa1036");
                     assert!(item[3].is_cons());
                     let t = item[3].to_vec()?;
-                    assert_eq!(t[0].as_symbol().unwrap(), "t");
+                    assert_matches!(t[0].as_symbol().unwrap(), "t" | "transform");
                     this.key_transform.0 = parse_number(&t[1])?;
                     this.key_transform.1 = parse_number(&t[2])?;
                     this.key_transform.2 = parse_number(&t[3])?;
                     this.key_transform.3 = parse_number(&t[4])?;
                     this.key_transform.4 = parse_number(&t[5])?;
                     this.key_transform.5 = parse_number(&t[6])?;
-                    assert_matches!(this.key_transform, (1, 0, 0, 1, _, _));
+                    /*assert_matches!(this.key_transform, (1, 0, 0, 1, _, _));
                     assert_matches!(
                         (this.key_transform.4, this.key_transform.5),
                         /* DFR */
                         (4, 5) | /* AND */ (10, 10) | /* DF */ (10, 11) | /* DFER */ (12, 17) | /* OR */ (16, 16) | /* DFE */ (16, 17) | /* XOR */ (17, 17)
-                    );
+                    );*/
                 }
                 "n" => {
+                    /*
                     assert_eq!(item[1].as_number()?.as_i64()?, 0);
-                    assert_eq!(item[2].as_str()?, "internal");
+                    // item[2] appears to be net name.
                     assert_eq!(item[3].as_number()?.as_i64()?, 2);
                     if item[4] == Value::Nil {
                         continue;
@@ -87,6 +94,10 @@ impl Layout {
                     assert_eq!(r#use[0].as_symbol()?, "use");
                     assert_eq!(r#use[1].as_str()?, "clk");
                     assert_eq!(r#use[2].as_str()?, "(null)");
+                    */
+                }
+                "p" => {
+                    // TODO
                 }
                 "shape" => {
                     this.shape_transform.0 = parse_number(&item[1])?;
@@ -95,19 +106,22 @@ impl Layout {
                     this.shape_transform.3 = parse_number(&item[4])?;
                     this.shape_transform.4 = parse_number(&item[5])?;
                     this.shape_transform.5 = parse_number(&item[6])?;
-                    assert_eq!(this.shape_transform, (0, 0, 0, 0, 0, 8));
+                    assert_matches!(
+                        this.shape_transform,
+                        (0, 0, 0, 0, 0, 8) | (0, 0, 0, 78, 78, 8)
+                    );
                     let item = item.to_vec()?;
                     for item in item.iter().skip(7) {
                         let symbol = item[0].as_symbol()?.to_string();
                         match symbol.as_str() {
                             "element" => {
                                 let mut element = Element::default();
-                                element.transform.0 = parse_number(&item[1])?;
-                                element.transform.1 = parse_number(&item[2])?;
-                                element.transform.2 = parse_number(&item[3])?;
-                                element.transform.3 = parse_number(&item[4])?;
-                                element.transform.4 = parse_number(&item[5])?;
-                                element.transform.5 = parse_number(&item[6])?;
+                                element.x = parse_number(&item[1])?;
+                                element.y = parse_number(&item[2])?;
+                                element.z = parse_number(&item[3])?;
+                                element.properties = parse_number(&item[4])?;
+                                element.config = parse_number(&item[5])?;
+                                element.net_idx = parse_number(&item[6])?;
                                 let net = item[7].to_vec()?;
                                 assert_eq!(net[0].as_symbol()?, "net");
                                 element.net = Some(net[1].as_str()?.to_string());
@@ -120,22 +134,12 @@ impl Layout {
                             }
                             "e" => {
                                 let mut element = Element::default();
-                                element.transform.0 = parse_number(&item[1])?;
-                                element.transform.1 = parse_number(&item[2])?;
-                                element.transform.2 = parse_number(&item[3])?;
-                                element.transform.3 = parse_number(&item[4])?;
-                                element.transform.4 = parse_number(&item[5])?;
-                                element.transform.5 = parse_number(&item[6])?;
-                                assert_matches!(element.transform, (0, 0, 2, _, _, 0));
-                                assert_matches!(
-                                    element.transform.3,
-                                    /* AND/OR */ 0 | /* XOR */ 4 | /* DL */ 5
-                                );
-                                assert_matches!(
-                                    element.transform.4,
-                                    /* DF */
-                                    14 | /* DFR */ 15 | /* AND/OR/XOR */ 28 | /* DFE */ 30 | /* DFER */ 31
-                                );
+                                element.x = parse_number(&item[1])?;
+                                element.y = parse_number(&item[2])?;
+                                element.z = parse_number(&item[3])?;
+                                element.properties = parse_number(&item[4])?;
+                                element.config = parse_number(&item[5])?;
+                                element.net_idx = parse_number(&item[6])?;
                                 this.elements.push(element);
                             }
                             unknown_keyword => {
@@ -151,8 +155,305 @@ impl Layout {
         Some(this)
     }
 
-    pub fn element_by_port_name(&self, port_name: &str) -> Option<&Element> {
-        self.elements.iter().find(|e| e.port.as_ref().and_then(|(name, _)| Some(name == port_name)).unwrap_or(false))
+    pub fn disassemble(&self) {
+        let mut elements = BTreeMap::<(i64, i64), Vec<(i64, i64, i64)>>::new();
+
+        for element in &self.elements {
+            let entry = elements.entry((element.x, element.y)).or_insert(vec![]);
+            entry.push((element.z, element.properties, element.config));
+        }
+
+        for ((x, y), subelements) in elements {
+            let standalone = matches!(self.shape_transform, (0, 0, 0, 0, 0, 8)) && x == 0 && y == 0;
+            let within_core_cell = ((4_i64..14).contains(&x)
+                || (16_i64..26).contains(&x)
+                || (28_i64..38).contains(&x)
+                || (40_i64..50).contains(&x)
+                || (52_i64..62).contains(&x)
+                || (64_i64..74).contains(&x))
+                && ((4_i64..14).contains(&y)
+                    || (16_i64..26).contains(&y)
+                    || (28_i64..38).contains(&y)
+                    || (40_i64..50).contains(&y)
+                    || (52_i64..62).contains(&y)
+                    || (64_i64..74).contains(&y));
+            if standalone || within_core_cell {
+                println!("({x}, {y}) = Core Cell:");
+                let mut should_break = false;
+                for (z, properties, config) in subelements {
+                    match z {
+                        0 => {
+                            assert!(config <= 1023, "A input mux has more than 10 config bits");
+
+                            /// This *might* be input inversion, but it only ever appears on buffers.
+                            const UNKNOWN_BIT0: i64 = 0b00_0000_0001;
+                            const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
+                            const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
+                            const VERTICAL_MEDIUM_BUS: i64 = 0b10_0000_1000;
+                            const LL_LOCAL_INTERCONNECT: i64 = 0b10_0001_0000;
+                            const U_LOCAL_INTERCONNECT: i64 = 0b10_0010_0000;
+                            const FBB_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
+                            const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
+                            const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
+                            const UNKNOWN_BIT9: i64 = 0b10_0000_0000;
+
+                            println!("    Z=0 - A input mux:");
+                            if config & UNKNOWN_BIT0 == 0 {
+                                println!("        -- ---- ---0: UNKNOWN bit 0 = 0");
+                            }
+                            if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
+                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1");
+                            }
+                            if config & UNKNOWN_BIT1 == 0 {
+                                println!("        -- ---- --0-: UNKNOWN bit 1 = 0");
+                            }
+                            if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
+                                println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
+                            }
+                            if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
+                                println!("        1- ---- -1--: horizontal medium bus");
+                            }
+                            if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
+                                println!("        1- ---- 1---: vertical medium bus");
+                            }
+                            if config & LL_LOCAL_INTERCONNECT == LL_LOCAL_INTERCONNECT {
+                                println!("        1- ---1 ----: LL local interconnect");
+                            }
+                            if config & U_LOCAL_INTERCONNECT == U_LOCAL_INTERCONNECT {
+                                println!("        1- --1- ----: U local interconnect");
+                            }
+                            if config & FBB_LOCAL_INTERCONNECT == FBB_LOCAL_INTERCONNECT {
+                                println!("        1- -1-- ----: FBB local interconnect");
+                            }
+                            if config & FB_LOCAL_INTERCONNECT == FB_LOCAL_INTERCONNECT {
+                                println!("        1- 1--- ----: FB local interconnect");
+                            }
+                            if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
+                                println!("        11 ---- ----: F local interconnect");
+                            }
+                            if config & UNKNOWN_BIT9 == 0 {
+                                println!("        0- ---- ----: UNKNOWN bit 9 = 0");
+                            }
+                        }
+                        1 => {
+                            assert!(config <= 1023, "B input mux has more than 10 config bits");
+
+                            /// This *might* be input inversion, but it only ever appears on buffers.
+                            const UNKNOWN_BIT0: i64 = 0b00_0000_0001;
+                            const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
+                            const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
+                            const VERTICAL_MEDIUM_BUS: i64 = 0b10_0000_1000;
+                            const UU_LOCAL_INTERCONNECT: i64 = 0b10_0001_0000;
+                            const L_LOCAL_INTERCONNECT: i64 = 0b10_0010_0000;
+                            const FF_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
+                            const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
+                            const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
+                            const UNKNOWN_BIT9: i64 = 0b10_0000_0000;
+
+                            println!("    Z=1 - B input mux:");
+                            if config & UNKNOWN_BIT0 == 0 {
+                                println!("        -- ---- ---0: UNKNOWN bit 0 = 0");
+                            }
+                            if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
+                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1");
+                            }
+                            if config & UNKNOWN_BIT1 == 0 {
+                                println!("        -- ---- --0-: UNKNOWN bit 1 = 0");
+                            }
+                            if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
+                                println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
+                            }
+                            if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
+                                println!("        1- ---- -1--: horizontal medium bus");
+                            }
+                            if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
+                                println!("        1- ---- 1---: vertical medium bus");
+                            }
+                            if config & UU_LOCAL_INTERCONNECT == UU_LOCAL_INTERCONNECT {
+                                println!("        1- ---1 ----: UU local interconnect");
+                            }
+                            if config & L_LOCAL_INTERCONNECT == L_LOCAL_INTERCONNECT {
+                                println!("        1- --1- ----: L local interconnect");
+                            }
+                            if config & FF_LOCAL_INTERCONNECT == FF_LOCAL_INTERCONNECT {
+                                println!("        1- -1-- ----: FF local interconnect");
+                            }
+                            if config & FB_LOCAL_INTERCONNECT == FB_LOCAL_INTERCONNECT {
+                                println!("        1- 1--- ----: FB local interconnect");
+                            }
+                            if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
+                                println!("        11 ---- ----: F local interconnect");
+                            }
+                            if config & UNKNOWN_BIT9 == 0 {
+                                println!("        0- ---- ----: UNKNOWN bit 9 = 0");
+                            }
+                        }
+                        2 => {
+                            assert!(config <= 1023, "2: {config} has more than 10 config bits");
+                            println!("    Z=2 - ??: {config:010b}");
+                            match properties {
+                                0 => println!("        properties=0 - logic element"),
+                                1 => println!("        properties=1 - buffer"),
+                                2 => println!("        properties=2 - pull-up"),
+                                3 => println!("        properties=3 - pull-down"),
+                                _ => panic!("unknown properties {properties}"),
+                            }
+                        }
+                        3 => {
+                            assert!(
+                                config <= 524287,
+                                "Q output mux has more than 19 config bits"
+                            );
+                            const OUTPUT_INVERTED: i64 = 0b000_0000_0000_0000_0001;
+                            const LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS: i64 =
+                                0b000_0000_0000_0000_0010;
+                            const UNKNOWN_BIT2: i64 = 0b000_0000_0000_0000_0100;
+                            const UNKNOWN_BIT3: i64 = 0b000_0000_0000_0000_1000;
+                            const UNKNOWN_BIT4: i64 = 0b000_0000_0000_0001_0000;
+                            const UNKNOWN_BIT5: i64 = 0b000_0000_0000_0010_0000;
+                            const UU_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0000_0100_0000;
+                            const LL_B_LOCAL_INTERCONNECT: i64 = 0b000_0000_0000_1000_0000;
+                            const U_B_LOCAL_INTERCONNECT: i64 = 0b000_0000_0001_0000_0000;
+                            const L_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0010_0000_0000;
+                            const FBB_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0100_0000_0000;
+                            const UNKNOWN_BIT11: i64 = 0b000_0000_1000_0000_0000;
+                            const FF_B_LOCAL_INTERCONNECT: i64 = 0b000_0001_0000_0000_0000;
+                            const FB_A_LOCAL_INTERCONNECT: i64 = 0b000_0010_0000_0000_0000;
+                            const FB_B_LOCAL_INTERCONNECT: i64 = 0b000_0100_0000_0000_0000;
+                            const F_A_LOCAL_INTERCONNECT: i64 = 0b000_1000_0000_0000_0000;
+                            const F_B_LOCAL_INTERCONNECT: i64 = 0b001_0000_0000_0000_0000;
+                            const UNKNOWN_BIT17: i64 = 0b010_0000_0000_0000_0000;
+                            const UNKNOWN_BIT18: i64 = 0b100_0000_0000_0000_0000;
+
+                            println!("    Z=3 - Q output mux??:");
+                            if config & OUTPUT_INVERTED == OUTPUT_INVERTED {
+                                println!("        --- ---- ---- ---- ---1: output inverted");
+                            }
+                            if config & LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
+                                == LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
+                            {
+                                println!(
+                                    "        --- ---- ---- ---- --1-: local interconnect connected to medium bus"
+                                );
+                            }
+                            if config & UNKNOWN_BIT2 == 0 {
+                                println!("        --- ---- ---- ---- -0--: UNKNOWN bit 2 = 0");
+                            }
+                            if config & UNKNOWN_BIT2 == UNKNOWN_BIT2 {
+                                println!("        --- ---- ---- ---- -1--: UNKNOWN bit 2 = 1");
+                            }
+                            if config & UNKNOWN_BIT3 == 0 {
+                                println!("        --- ---- ---- ---- 0---: UNKNOWN bit 3 = 0");
+                            }
+                            if config & UNKNOWN_BIT3 == UNKNOWN_BIT3 {
+                                println!("        --- ---- ---- ---- 1---: UNKNOWN bit 3 = 1");
+                            }
+                            if config & UNKNOWN_BIT4 == 0 {
+                                println!("        --- ---- ---- ---0 ----: UNKNOWN bit 4 = 0");
+                            }
+                            if config & UNKNOWN_BIT4 == UNKNOWN_BIT4 {
+                                println!("        --- ---- ---- ---1 ----: UNKNOWN bit 4 = 1");
+                            }
+                            if config & UNKNOWN_BIT5 == 0 {
+                                println!("        --- ---- ---- --0- ----: UNKNOWN bit 5 = 0");
+                            }
+                            if config & UNKNOWN_BIT5 == UNKNOWN_BIT5 {
+                                println!("        --- ---- ---- --1- ----: UNKNOWN bit 5 = 1");
+                            }
+                            if config & UU_A_LOCAL_INTERCONNECT == UU_A_LOCAL_INTERCONNECT {
+                                println!(
+                                    "        --- ---- ---- -1-- ----: UU A local interconnect"
+                                );
+                            }
+                            if config & LL_B_LOCAL_INTERCONNECT == LL_B_LOCAL_INTERCONNECT {
+                                println!(
+                                    "        --- ---- ---- 1--- ----: LL B local interconnect"
+                                );
+                            }
+                            if config & U_B_LOCAL_INTERCONNECT == U_B_LOCAL_INTERCONNECT {
+                                println!("        --- ---- ---1 ---- ----: U B local interconnect");
+                            }
+                            if config & L_A_LOCAL_INTERCONNECT == L_A_LOCAL_INTERCONNECT {
+                                println!("        --- ---- --1- ---- ----: L A local interconnect");
+                            }
+                            if config & FBB_A_LOCAL_INTERCONNECT == FBB_A_LOCAL_INTERCONNECT {
+                                println!(
+                                    "        --- ---- -1-- ---- ----: FBB A local interconnect"
+                                );
+                            }
+                            if config & UNKNOWN_BIT11 == 0 {
+                                println!("        --- ---- 0--- ---- ----: UNKNOWN bit 11 = 0");
+                            }
+                            if config & UNKNOWN_BIT11 == UNKNOWN_BIT11 {
+                                println!("        --- ---- 1--- ---- ----: UNKNOWN bit 11 = 1");
+                            }
+                            if config & FF_B_LOCAL_INTERCONNECT == FF_B_LOCAL_INTERCONNECT {
+                                println!(
+                                    "        --- ---1 ---- ---- ----: FF B local interconnect"
+                                );
+                            }
+                            if config & FB_A_LOCAL_INTERCONNECT == FB_A_LOCAL_INTERCONNECT {
+                                println!(
+                                    "        --- --1- ---- ---- ----: FB A local interconnect"
+                                );
+                            }
+                            if config & FB_B_LOCAL_INTERCONNECT == FB_B_LOCAL_INTERCONNECT {
+                                println!(
+                                    "        --- -1-- ---- ---- ----: FB B local interconnect"
+                                );
+                            }
+                            if config & F_A_LOCAL_INTERCONNECT == F_A_LOCAL_INTERCONNECT {
+                                println!("        --- 1--- ---- ---- ----: F A local interconnect");
+                            }
+                            if config & F_B_LOCAL_INTERCONNECT == F_B_LOCAL_INTERCONNECT {
+                                println!("        --1 ---- ---- ---- ----: F B local interconnect");
+                            }
+                            if config & UNKNOWN_BIT17 == 0 {
+                                println!("        -0- ---- ---- ---- ----: UNKNOWN bit 17 = 0");
+                            }
+                            if config & UNKNOWN_BIT17 == UNKNOWN_BIT17 {
+                                println!("        -1- ---- ---- ---- ----: UNKNOWN bit 17 = 1");
+                            }
+                            if config & UNKNOWN_BIT18 == 0 {
+                                println!("        0-- ---- ---- ---- ----: UNKNOWN bit 18 = 0");
+                            }
+                            if config & UNKNOWN_BIT18 == UNKNOWN_BIT18 {
+                                println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1");
+                                should_break = true;
+                            }
+                        }
+                        4 => {
+                            assert!(config <= 1023, "4: {config} has more than 10 config bits");
+                            println!("    Z=4 - ??: {config:010b}");
+                        }
+                        5 => {
+                            assert!(config <= 1023, "5: {config} has more than 10 config bits");
+                            println!("    Z=5 - ??: {config:010b}");
+                        }
+                        6 => {
+                            assert!(config <= 1023, "6: {config} has more than 10 config bits");
+                            println!("    Z=6 - ??: {config:010b}");
+                        }
+                        7 => {
+                            assert!(config <= 524287, "function has more than 19 config bits");
+                            println!("    Z=7 - function??: {config:019b}");
+                        }
+                        8 => {
+                            assert!(config <= 1023, "8: {config} has more than 10 config bits");
+                            println!("    Z=8 - ??: {config:010b}");
+                        }
+                        _ => panic!(
+                            "    don't know how to disassemble core cell z = {z} with config {config:b}"
+                        ),
+                    }
+                }
+                if should_break {
+                    panic!("at the disco");
+                }
+            } else {
+                println!("({x}, {y}) = ???");
+            }
+        }
     }
 }
 
@@ -163,6 +464,8 @@ fn main() -> io::Result<()> {
 
         let layout = Layout::new(file).unwrap();
         println!("{layout:?}");
+
+        layout.disassemble();
     }
 
     Ok(())
