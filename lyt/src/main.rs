@@ -180,6 +180,7 @@ impl Layout {
             if standalone || within_core_cell {
                 println!("({x}, {y}) = Core Cell:");
                 let mut should_break = false;
+                let mut should_break_2 = true;
                 for (z, properties, config) in subelements {
                     match z {
                         0 => {
@@ -187,6 +188,7 @@ impl Layout {
 
                             /// This *might* be input inversion, but it only ever appears on buffers.
                             const UNKNOWN_BIT0: i64 = 0b00_0000_0001;
+                            /// Never set?
                             const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
                             const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
                             const VERTICAL_MEDIUM_BUS: i64 = 0b10_0000_1000;
@@ -195,20 +197,16 @@ impl Layout {
                             const FBB_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
                             const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
                             const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
+                            /// Possibly a mux-enable bit
                             const UNKNOWN_BIT9: i64 = 0b10_0000_0000;
 
                             println!("    Z=0 - A input mux:");
-                            if config & UNKNOWN_BIT0 == 0 {
-                                println!("        -- ---- ---0: UNKNOWN bit 0 = 0");
-                            }
                             if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1");
-                            }
-                            if config & UNKNOWN_BIT1 == 0 {
-                                println!("        -- ---- --0-: UNKNOWN bit 1 = 0");
+                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
                             }
                             if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
                                 println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
+                                should_break = true;
                             }
                             if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
                                 println!("        1- ---- -1--: horizontal medium bus");
@@ -232,7 +230,8 @@ impl Layout {
                                 println!("        11 ---- ----: F local interconnect");
                             }
                             if config & UNKNOWN_BIT9 == 0 {
-                                println!("        0- ---- ----: UNKNOWN bit 9 = 0");
+                                println!("        0- ---- ----: mux enable? = 0");
+                                should_break = true;
                             }
                         }
                         1 => {
@@ -240,6 +239,7 @@ impl Layout {
 
                             /// This *might* be input inversion, but it only ever appears on buffers.
                             const UNKNOWN_BIT0: i64 = 0b00_0000_0001;
+                            /// Never set?
                             const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
                             const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
                             const VERTICAL_MEDIUM_BUS: i64 = 0b10_0000_1000;
@@ -248,20 +248,16 @@ impl Layout {
                             const FF_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
                             const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
                             const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
+                            /// Possibly a mux-enable bit
                             const UNKNOWN_BIT9: i64 = 0b10_0000_0000;
 
                             println!("    Z=1 - B input mux:");
-                            if config & UNKNOWN_BIT0 == 0 {
-                                println!("        -- ---- ---0: UNKNOWN bit 0 = 0");
-                            }
                             if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1");
-                            }
-                            if config & UNKNOWN_BIT1 == 0 {
-                                println!("        -- ---- --0-: UNKNOWN bit 1 = 0");
+                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
                             }
                             if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
                                 println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
+                                should_break = true;
                             }
                             if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
                                 println!("        1- ---- -1--: horizontal medium bus");
@@ -285,7 +281,8 @@ impl Layout {
                                 println!("        11 ---- ----: F local interconnect");
                             }
                             if config & UNKNOWN_BIT9 == 0 {
-                                println!("        0- ---- ----: UNKNOWN bit 9 = 0");
+                                println!("        0- ---- ----: mux enable? = 0");
+                                should_break = true;
                             }
                         }
                         2 => {
@@ -298,36 +295,47 @@ impl Layout {
                                 3 => println!("        properties=3 - pull-down"),
                                 _ => panic!("unknown properties {properties}"),
                             }
+                            if properties == 1 {
+                                //should_break_2 = false;
+                            }
                         }
                         3 => {
                             assert!(
                                 config <= 524287,
                                 "Q output mux has more than 19 config bits"
                             );
-                            const OUTPUT_INVERTED: i64 = 0b000_0000_0000_0000_0001;
+                            /// This only ever appears on buffers.
+                            const UNKNOWN_BIT0: i64 = 0b000_0000_0000_0000_0001;
                             const LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS: i64 =
                                 0b000_0000_0000_0000_0010;
+                            /// Never set?
                             const UNKNOWN_BIT2: i64 = 0b000_0000_0000_0000_0100;
+                            /// Never set?
                             const UNKNOWN_BIT3: i64 = 0b000_0000_0000_0000_1000;
+                            /// Never set?
                             const UNKNOWN_BIT4: i64 = 0b000_0000_0000_0001_0000;
+                            /// Never set?
                             const UNKNOWN_BIT5: i64 = 0b000_0000_0000_0010_0000;
                             const UU_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0000_0100_0000;
                             const LL_B_LOCAL_INTERCONNECT: i64 = 0b000_0000_0000_1000_0000;
                             const U_B_LOCAL_INTERCONNECT: i64 = 0b000_0000_0001_0000_0000;
                             const L_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0010_0000_0000;
                             const FBB_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0100_0000_0000;
+                            /// Never set?
                             const UNKNOWN_BIT11: i64 = 0b000_0000_1000_0000_0000;
                             const FF_B_LOCAL_INTERCONNECT: i64 = 0b000_0001_0000_0000_0000;
                             const FB_A_LOCAL_INTERCONNECT: i64 = 0b000_0010_0000_0000_0000;
                             const FB_B_LOCAL_INTERCONNECT: i64 = 0b000_0100_0000_0000_0000;
                             const F_A_LOCAL_INTERCONNECT: i64 = 0b000_1000_0000_0000_0000;
                             const F_B_LOCAL_INTERCONNECT: i64 = 0b001_0000_0000_0000_0000;
+                            /// Never set?
                             const UNKNOWN_BIT17: i64 = 0b010_0000_0000_0000_0000;
+                            /// This only ever appears on buffers.
                             const UNKNOWN_BIT18: i64 = 0b100_0000_0000_0000_0000;
 
                             println!("    Z=3 - Q output mux??:");
-                            if config & OUTPUT_INVERTED == OUTPUT_INVERTED {
-                                println!("        --- ---- ---- ---- ---1: output inverted");
+                            if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
+                                println!("        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
                             }
                             if config & LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
                                 == LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
@@ -336,26 +344,14 @@ impl Layout {
                                     "        --- ---- ---- ---- --1-: local interconnect connected to medium bus"
                                 );
                             }
-                            if config & UNKNOWN_BIT2 == 0 {
-                                println!("        --- ---- ---- ---- -0--: UNKNOWN bit 2 = 0");
-                            }
                             if config & UNKNOWN_BIT2 == UNKNOWN_BIT2 {
                                 println!("        --- ---- ---- ---- -1--: UNKNOWN bit 2 = 1");
-                            }
-                            if config & UNKNOWN_BIT3 == 0 {
-                                println!("        --- ---- ---- ---- 0---: UNKNOWN bit 3 = 0");
                             }
                             if config & UNKNOWN_BIT3 == UNKNOWN_BIT3 {
                                 println!("        --- ---- ---- ---- 1---: UNKNOWN bit 3 = 1");
                             }
-                            if config & UNKNOWN_BIT4 == 0 {
-                                println!("        --- ---- ---- ---0 ----: UNKNOWN bit 4 = 0");
-                            }
                             if config & UNKNOWN_BIT4 == UNKNOWN_BIT4 {
                                 println!("        --- ---- ---- ---1 ----: UNKNOWN bit 4 = 1");
-                            }
-                            if config & UNKNOWN_BIT5 == 0 {
-                                println!("        --- ---- ---- --0- ----: UNKNOWN bit 5 = 0");
                             }
                             if config & UNKNOWN_BIT5 == UNKNOWN_BIT5 {
                                 println!("        --- ---- ---- --1- ----: UNKNOWN bit 5 = 1");
@@ -381,11 +377,9 @@ impl Layout {
                                     "        --- ---- -1-- ---- ----: FBB A local interconnect"
                                 );
                             }
-                            if config & UNKNOWN_BIT11 == 0 {
-                                println!("        --- ---- 0--- ---- ----: UNKNOWN bit 11 = 0");
-                            }
                             if config & UNKNOWN_BIT11 == UNKNOWN_BIT11 {
                                 println!("        --- ---- 1--- ---- ----: UNKNOWN bit 11 = 1");
+                                should_break = true;
                             }
                             if config & FF_B_LOCAL_INTERCONNECT == FF_B_LOCAL_INTERCONNECT {
                                 println!(
@@ -408,46 +402,51 @@ impl Layout {
                             if config & F_B_LOCAL_INTERCONNECT == F_B_LOCAL_INTERCONNECT {
                                 println!("        --1 ---- ---- ---- ----: F B local interconnect");
                             }
-                            if config & UNKNOWN_BIT17 == 0 {
-                                println!("        -0- ---- ---- ---- ----: UNKNOWN bit 17 = 0");
-                            }
                             if config & UNKNOWN_BIT17 == UNKNOWN_BIT17 {
                                 println!("        -1- ---- ---- ---- ----: UNKNOWN bit 17 = 1");
-                            }
-                            if config & UNKNOWN_BIT18 == 0 {
-                                println!("        0-- ---- ---- ---- ----: UNKNOWN bit 18 = 0");
+                                should_break = true;
                             }
                             if config & UNKNOWN_BIT18 == UNKNOWN_BIT18 {
-                                println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1");
-                                should_break = true;
+                                println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1 (buffer?)");
                             }
                         }
                         4 => {
                             assert!(config <= 1023, "4: {config} has more than 10 config bits");
                             println!("    Z=4 - ??: {config:010b}");
+                            should_break = true;
                         }
                         5 => {
                             assert!(config <= 1023, "5: {config} has more than 10 config bits");
                             println!("    Z=5 - ??: {config:010b}");
+                            should_break = true;
                         }
                         6 => {
-                            assert!(config <= 1023, "6: {config} has more than 10 config bits");
-                            println!("    Z=6 - ??: {config:010b}");
+                            assert!(config <= 3, "X Bus: {config} has more than 2 config bits");
+                            println!("    Z=6 - X Bus:");
+                            const VERTICAL_MEDIUM_BUS: i64 = 0b01;
+                            const HORIZONTAL_MEDIUM_BUS: i64 = 0b10;
+                            if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
+                                println!("        -1: vertical medium bus");
+                            }
+                            if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
+                                println!("        1-: horizontal medium bus");
+                            }
                         }
                         7 => {
-                            assert!(config <= 524287, "function has more than 19 config bits");
+                            assert!(config <= 524287, "function: {config} has more than 19 config bits");
                             println!("    Z=7 - function??: {config:019b}");
                         }
                         8 => {
                             assert!(config <= 1023, "8: {config} has more than 10 config bits");
                             println!("    Z=8 - ??: {config:010b}");
+                            should_break = true;
                         }
                         _ => panic!(
                             "    don't know how to disassemble core cell z = {z} with config {config:b}"
                         ),
                     }
                 }
-                if should_break {
+                if should_break && should_break_2 {
                     panic!("at the disco");
                 }
             } else {
