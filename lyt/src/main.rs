@@ -186,8 +186,7 @@ impl Layout {
                         0 => {
                             assert!(config <= 1023, "A input mux has more than 10 config bits");
 
-                            /// This *might* be input inversion, but it only ever appears on buffers.
-                            const UNKNOWN_BIT0: i64 = 0b00_0000_0001;
+                            const INPUT_INVERTED: i64 = 0b00_0000_0001;
                             /// Never set?
                             const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
                             const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
@@ -200,36 +199,36 @@ impl Layout {
                             const MUX_ENABLE: i64 = 0b10_0000_0000;
 
                             println!("    Z=0 - A input mux:");
-                            if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
+                            if config & INPUT_INVERTED == INPUT_INVERTED {
+                                println!("        -- ---- ---1: input inverted");
                             }
                             if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
                                 println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
                                 should_break = true;
                             }
                             if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
-                                println!("        1- ---- -1--: horizontal medium bus");
+                                println!("        1- ---- -1--: input = horizontal medium bus");
                             }
                             if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
-                                println!("        1- ---- 1---: vertical medium bus");
+                                println!("        1- ---- 1---: input = vertical medium bus");
                             }
                             if config & LL_LOCAL_INTERCONNECT == LL_LOCAL_INTERCONNECT {
-                                println!("        1- ---1 ----: LL local interconnect");
+                                println!("        1- ---1 ----: input = LL local interconnect");
                             }
                             if config & U_LOCAL_INTERCONNECT == U_LOCAL_INTERCONNECT {
-                                println!("        1- --1- ----: U local interconnect");
+                                println!("        1- --1- ----: input = U local interconnect");
                             }
                             if config & FBB_LOCAL_INTERCONNECT == FBB_LOCAL_INTERCONNECT {
-                                println!("        1- -1-- ----: FBB local interconnect");
+                                println!("        1- -1-- ----: input = FBB local interconnect");
                             }
                             if config & FB_LOCAL_INTERCONNECT == FB_LOCAL_INTERCONNECT {
-                                println!("        1- 1--- ----: FB local interconnect");
+                                println!("        1- 1--- ----: input = FB local interconnect");
                             }
                             if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
-                                println!("        11 ---- ----: F local interconnect");
+                                println!("        11 ---- ----: input = F local interconnect");
                             }
                             if config & MUX_ENABLE == 0 {
-                                println!("        0- ---- ----: mux disabled");
+                                println!("        0- ---- ----: input = constant");
                             }
                             match properties {
                                 0 => println!("        properties=0: normal"),
@@ -240,8 +239,7 @@ impl Layout {
                         1 => {
                             assert!(config <= 1023, "B input mux has more than 10 config bits");
 
-                            /// This *might* be input inversion, but it only ever appears on buffers.
-                            const UNKNOWN_BIT0: i64 = 0b00_0000_0001;
+                            const INPUT_INVERTED: i64 = 0b00_0000_0001;
                             /// Never set?
                             const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
                             const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
@@ -254,36 +252,36 @@ impl Layout {
                             const MUX_ENABLE: i64 = 0b10_0000_0000;
 
                             println!("    Z=1 - B input mux:");
-                            if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                                println!("        -- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
+                            if config & INPUT_INVERTED == INPUT_INVERTED {
+                                println!("        -- ---- ---1: input inverted");
                             }
                             if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
                                 println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
                                 should_break = true;
                             }
                             if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
-                                println!("        1- ---- -1--: horizontal medium bus");
+                                println!("        1- ---- -1--: input = horizontal medium bus");
                             }
                             if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
-                                println!("        1- ---- 1---: vertical medium bus");
+                                println!("        1- ---- 1---: input = vertical medium bus");
                             }
                             if config & UU_LOCAL_INTERCONNECT == UU_LOCAL_INTERCONNECT {
-                                println!("        1- ---1 ----: UU local interconnect");
+                                println!("        1- ---1 ----: input = UU local interconnect");
                             }
                             if config & L_LOCAL_INTERCONNECT == L_LOCAL_INTERCONNECT {
-                                println!("        1- --1- ----: L local interconnect");
+                                println!("        1- --1- ----: input = L local interconnect");
                             }
                             if config & FF_LOCAL_INTERCONNECT == FF_LOCAL_INTERCONNECT {
-                                println!("        1- -1-- ----: FF local interconnect");
+                                println!("        1- -1-- ----: input = FF local interconnect");
                             }
                             if config & FB_LOCAL_INTERCONNECT == FB_LOCAL_INTERCONNECT {
-                                println!("        1- 1--- ----: FB local interconnect");
+                                println!("        1- 1--- ----: input = FB local interconnect");
                             }
                             if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
-                                println!("        11 ---- ----: F local interconnect");
+                                println!("        11 ---- ----: input = F local interconnect");
                             }
                             if config & MUX_ENABLE == 0 {
-                                println!("        0- ---- ----: mux disabled");
+                                println!("        0- ---- ----: input = constant");
                             }
                             match properties {
                                 0 => println!("        properties=0: normal"),
@@ -292,14 +290,41 @@ impl Layout {
                             }
                         }
                         2 => {
-                            assert!(config <= 1023, "2: {config} has more than 10 config bits");
+                            assert!(config <= 31, "2: {config} has more than 5 config bits");
+                            const RESET: i64 = 0b0_0001;
+                            const CLOCK: i64 = 0b0_0010;
+                            // Never set?
+                            const UNKNOWN_BIT2: i64 = 0b0_0100;
+                            const UNKNOWN_BIT3: i64 = 0b0_1000;
+                            const UNKNOWN_BIT4: i64 = 0b1_0000;
+
                             println!("    Z=2 - ??: {config:010b}");
+
+                            if config & RESET == RESET {
+                                println!("        - ---1: connect to reset");
+                            }
+                            if config & CLOCK == CLOCK {
+                                println!("        - --1-: connect to clock");
+                            }
+                            if config & UNKNOWN_BIT2 == 0 {
+                                println!("        - -0--: UNKNOWN bit 2 = 0");
+                                should_break = true;
+                            }
+                            if config & UNKNOWN_BIT3 == 0 {
+                                println!("        - 0---: UNKNOWN bit 3 = 0");
+                                //should_break = true;
+                            }
+                            if config & UNKNOWN_BIT4 == 0 {
+                                println!("        0 ----: df/ndf/dfr/dl?");
+                            }
+
                             match properties {
-                                0 => println!("        properties=0: logic element"),
+                                0 => println!("        properties=0: and"),
                                 1 => println!("        properties=1: buffer"),
                                 2 => println!("        properties=2: pull-up"),
                                 3 => println!("        properties=3: pull-down"),
-                                4 => println!("        properties=4: xor???"),
+                                4 => println!("        properties=4: xor/dff"),
+                                5 => println!("        properties=5: dlatch"),
                                 _ => panic!("unknown properties {properties}"),
                             }
                             if properties == 1 {
@@ -340,7 +365,7 @@ impl Layout {
                             /// This only ever appears on buffers.
                             const UNKNOWN_BIT18: i64 = 0b100_0000_0000_0000_0000;
 
-                            println!("    Z=3 - Q output mux??:");
+                            println!("    Z=3 - Q output mux??");
                             if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
                                 println!(
                                     "        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)"
