@@ -298,7 +298,7 @@ impl Layout {
                             const UNKNOWN_BIT3: i64 = 0b0_1000;
                             const UNKNOWN_BIT4: i64 = 0b1_0000;
 
-                            println!("    Z=2 - ??: {config:010b}");
+                            println!("    Z=2 - ??: {config:05b}");
 
                             if config & RESET == RESET {
                                 println!("        - ---1: connect to reset");
@@ -375,7 +375,7 @@ impl Layout {
                                 == LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
                             {
                                 println!(
-                                    "        --- ---- ---- ---- --1-: local interconnect connected to medium bus"
+                                    "        --- ---- ---- ---- --1-: connect medium bus to local interconnect"
                                 );
                             }
                             if config & UNKNOWN_BIT2 == UNKNOWN_BIT2 {
@@ -459,13 +459,13 @@ impl Layout {
                         6 => {
                             assert!(config <= 3, "X Bus: {config} has more than 2 config bits");
                             println!("    Z=6 - X Bus:");
-                            const LEFT_VERTICAL_MEDIUM_BUS: i64 = 0b01;
-                            const BELOW_HORIZONTAL_MEDIUM_BUS: i64 = 0b10;
-                            if config & LEFT_VERTICAL_MEDIUM_BUS == LEFT_VERTICAL_MEDIUM_BUS {
-                                println!("        -1: connect to left vertical medium bus");
+                            const LEFT_VERTICAL_X_BUS: i64 = 0b01;
+                            const BELOW_HORIZONTAL_X_BUS: i64 = 0b10;
+                            if config & LEFT_VERTICAL_X_BUS == LEFT_VERTICAL_X_BUS {
+                                println!("        -1: connect to left vertical X bus");
                             }
-                            if config & BELOW_HORIZONTAL_MEDIUM_BUS == BELOW_HORIZONTAL_MEDIUM_BUS {
-                                println!("        1-: connect to below horizontal medium bus");
+                            if config & BELOW_HORIZONTAL_X_BUS == BELOW_HORIZONTAL_X_BUS {
+                                println!("        1-: connect to below horizontal X bus");
                             }
                         }
                         7 => {
@@ -516,22 +516,22 @@ impl Layout {
                             }
                             if config & BELOW_HORIZONTAL_MEDIUM_BUS == BELOW_HORIZONTAL_MEDIUM_BUS {
                                 println!(
-                                    "        --- ---- ---- ---- -1--: output to below horizontal medium bus"
+                                    "        --- ---- ---- ---- -1--: connect to below horizontal medium bus"
                                 );
                             }
                             if config & LEFT_VERTICAL_MEDIUM_BUS == LEFT_VERTICAL_MEDIUM_BUS {
                                 println!(
-                                    "        --- ---- ---- ---- 1---: output to left vertical medium bus"
+                                    "        --- ---- ---- ---- 1---: connect to left vertical medium bus"
                                 );
                             }
                             if config & ABOVE_HORIZONTAL_MEDIUM_BUS == ABOVE_HORIZONTAL_MEDIUM_BUS {
                                 println!(
-                                    "        --- ---- ---- ---1 ----: output to above horizontal medium bus"
+                                    "        --- ---- ---- ---1 ----: connect to above horizontal medium bus"
                                 );
                             }
                             if config & RIGHT_VERTICAL_MEDIUM_BUS == RIGHT_VERTICAL_MEDIUM_BUS {
                                 println!(
-                                    "        --- ---- ---- --1- ----: output to right vertical medium bus"
+                                    "        --- ---- ---- --1- ----: connect to right vertical medium bus"
                                 );
                             }
                             if config & UNKNOWN_BIT6 == UNKNOWN_BIT15 {
