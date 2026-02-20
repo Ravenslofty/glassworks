@@ -106,10 +106,6 @@ impl Layout {
                     this.shape_transform.3 = parse_number(&item[4])?;
                     this.shape_transform.4 = parse_number(&item[5])?;
                     this.shape_transform.5 = parse_number(&item[6])?;
-                    assert_matches!(
-                        this.shape_transform,
-                        (0, 0, 0, 0, 0, 8) | (0, 0, 0, 78, 78, 8)
-                    );
                     let item = item.to_vec()?;
                     for item in item.iter().skip(7) {
                         let symbol = item[0].as_symbol()?.to_string();
@@ -684,7 +680,7 @@ impl Layout {
                         println!("        1 -1-- ----: input = X bus");
                     }
                     if config & UNKNOWN_BIT7 == UNKNOWN_BIT7 {
-                        println!("        - 1--- ----: UNKNOWN bit 7 = 0");
+                        println!("        - 1--- ----: UNKNOWN bit 7 = 1");
                     }
                     if config & MUX_ENABLE == 0 {
                         println!("        0 ---- ----: input = disabled?");
@@ -766,7 +762,7 @@ impl Layout {
         }
 
         for ((x, y), subelements) in elements {
-            let standalone = matches!(self.shape_transform, (0, 0, 0, 0, 0, 8)) && x == 0 && y == 0;
+            let standalone_core_cell = matches!(self.shape_transform, (0, 0, 0, 0, 0, 8)) && x == 0 && y == 0;
             let within_core_cell = ((4_i64..14).contains(&x)
                 || (16_i64..26).contains(&x)
                 || (28_i64..38).contains(&x)
