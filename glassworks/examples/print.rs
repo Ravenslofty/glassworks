@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: ISC
+
 use glassworks::Bitstream;
 
 fn main() {

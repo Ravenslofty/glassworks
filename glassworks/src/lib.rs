@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: ISC
+
 use std::io::{Read, Write, self};
 
 pub fn ecb_calc(row: &[u8]) -> u8 {

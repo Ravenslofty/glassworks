@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: ISC
+
 use std::assert_matches;
 use std::collections::{BTreeMap, HashSet};
 use std::fs::File;
