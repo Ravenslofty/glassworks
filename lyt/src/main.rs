@@ -652,42 +652,42 @@ impl Layout {
                         properties <= 0,
                         "6: {properties} has more than 0 properties"
                     );
-                    const UNKNOWN_BIT0: i64 = 0b0_0000_0001;
-                    const UNKNOWN_BIT1: i64 = 0b0_0000_0010;
-                    const UNKNOWN_BIT2: i64 = 0b0_0000_0100;
-                    const UNKNOWN_BIT3: i64 = 0b0_0000_1000;
-                    const UNKNOWN_BIT4: i64 = 0b0_0001_0000;
-                    const UNKNOWN_BIT5: i64 = 0b0_0010_0000;
-                    const UNKNOWN_BIT6: i64 = 0b0_0100_0000;
+                    const GLOBAL_BUS_0: i64 = 0b1_0000_0001;
+                    const GLOBAL_BUS_1: i64 = 0b1_0000_0010;
+                    const GLOBAL_BUS_2: i64 = 0b1_0000_0100;
+                    const GLOBAL_BUS_3: i64 = 0b1_0000_1000;
+                    const MEDIUM_BUS_0: i64 = 0b1_0001_0000;
+                    const MEDIUM_BUS_1: i64 = 0b1_0010_0000;
+                    const X_BUS: i64 = 0b0_0100_0000;
                     const UNKNOWN_BIT7: i64 = 0b0_1000_0000;
-                    const UNKNOWN_BIT8: i64 = 0b1_0000_0000;
+                    const MUX_ENABLE: i64 = 0b1_0000_0000;
                     println!("    Z=6 - Pad/P-Bus Input?:");
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT0) == (UNKNOWN_BIT8 | UNKNOWN_BIT0) {
+                    if config & GLOBAL_BUS_0 == GLOBAL_BUS_0 {
                         println!("        1 ---- ---1: input = global bus 0");
                     }
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT1) == (UNKNOWN_BIT8 | UNKNOWN_BIT1) {
+                    if config & GLOBAL_BUS_1 == GLOBAL_BUS_1 {
                         println!("        1 ---- --1-: input = global bus 1");
                     }
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT2) == (UNKNOWN_BIT8 | UNKNOWN_BIT2) {
+                    if config & GLOBAL_BUS_2 == GLOBAL_BUS_2 {
                         println!("        1 ---- -1--: input = global bus 2");
                     }
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT3) == (UNKNOWN_BIT8 | UNKNOWN_BIT3) {
+                    if config & GLOBAL_BUS_3 == GLOBAL_BUS_3 {
                         println!("        1 ---- 1---: input = global bus 3");
                     }
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT4) == (UNKNOWN_BIT8 | UNKNOWN_BIT4) {
-                        println!("        1 ---1 ----: input = vertical medium bus 0");
+                    if config & MEDIUM_BUS_0 == MEDIUM_BUS_0 {
+                        println!("        1 ---1 ----: input = medium bus 0");
                     }
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT5) == (UNKNOWN_BIT8 | UNKNOWN_BIT5) {
-                        println!("        1 --1- ----: input = vertical medium bus 1");
+                    if config & MEDIUM_BUS_1 == MEDIUM_BUS_1 {
+                        println!("        1 --1- ----: input = medium bus 1");
                     }
-                    if config & (UNKNOWN_BIT8 | UNKNOWN_BIT6) == (UNKNOWN_BIT8 | UNKNOWN_BIT6) {
-                        println!("        1 -1-- ----: input = vertical X bus");
+                    if config & X_BUS == X_BUS {
+                        println!("        1 -1-- ----: input = X bus");
                     }
                     if config & UNKNOWN_BIT7 == UNKNOWN_BIT7 {
                         println!("        - 1--- ----: UNKNOWN bit 7 = 0");
                     }
-                    if config & UNKNOWN_BIT8 == 0 {
-                        println!("        0 ---- ----: UNKNOWN bit 8 = 0");
+                    if config & MUX_ENABLE == 0 {
+                        println!("        0 ---- ----: input = disabled?");
                     }
                 }
                 7 => {
@@ -704,38 +704,38 @@ impl Layout {
                         properties <= 0,
                         "Pad/P-Bus Output: {properties} has more than 0 properties"
                     );
-                    const UNKNOWN_BIT0: i64 = 0b000_0000_0001;
-                    const UNKNOWN_BIT1: i64 = 0b000_0000_0010;
-                    const UNKNOWN_BIT2: i64 = 0b000_0000_0100;
-                    const UNKNOWN_BIT3: i64 = 0b000_0000_1000;
-                    const UNKNOWN_BIT4: i64 = 0b000_0001_0000;
-                    const UNKNOWN_BIT5: i64 = 0b000_0010_0000;
-                    const UNKNOWN_BIT6: i64 = 0b000_0100_0000;
+                    const GLOBAL_BUS_0: i64 = 0b000_0000_0001;
+                    const GLOBAL_BUS_1: i64 = 0b000_0000_0010;
+                    const GLOBAL_BUS_2: i64 = 0b000_0000_0100;
+                    const GLOBAL_BUS_3: i64 = 0b000_0000_1000;
+                    const MEDIUM_BUS_0: i64 = 0b000_0001_0000;
+                    const MEDIUM_BUS_1: i64 = 0b000_0010_0000;
+                    const X_BUS: i64 = 0b000_0100_0000;
                     const UNKNOWN_BIT7: i64 = 0b000_1000_0000;
                     const UNKNOWN_BIT8: i64 = 0b001_0000_0000;
                     const UNKNOWN_BIT9: i64 = 0b010_0000_0000;
                     const UNKNOWN_BIT10: i64 = 0b100_0000_0000;
                     println!("    Z=8 - Pad/P-Bus Output?:");
-                    if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
+                    if config & GLOBAL_BUS_0 == GLOBAL_BUS_0 {
                         println!("        --- ---- ---1: connect to global bus 0");
                     }
-                    if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
+                    if config & GLOBAL_BUS_1 == GLOBAL_BUS_1 {
                         println!("        --- ---- --1-: connect to global bus 1");
                     }
-                    if config & UNKNOWN_BIT2 == UNKNOWN_BIT2 {
+                    if config & GLOBAL_BUS_2 == GLOBAL_BUS_2 {
                         println!("        --- ---- -1--: connect to global bus 2");
                     }
-                    if config & UNKNOWN_BIT3 == UNKNOWN_BIT3 {
+                    if config & GLOBAL_BUS_3 == GLOBAL_BUS_3 {
                         println!("        --- ---- 1---: connect to global bus 3");
                     }
-                    if config & UNKNOWN_BIT4 == UNKNOWN_BIT4 {
-                        println!("        --- ---1 ----: connect to vertical medium bus 0");
+                    if config & MEDIUM_BUS_0 == MEDIUM_BUS_0 {
+                        println!("        --- ---1 ----: connect to medium bus 0");
                     }
-                    if config & UNKNOWN_BIT5 == UNKNOWN_BIT5 {
-                        println!("        --- --1- ----: connect to vertical medium bus 1");
+                    if config & MEDIUM_BUS_1 == MEDIUM_BUS_1 {
+                        println!("        --- --1- ----: connect to medium bus 1");
                     }
-                    if config & UNKNOWN_BIT6 == UNKNOWN_BIT6 {
-                        println!("        --- -1-- ----: connect to vertical X bus");
+                    if config & X_BUS == X_BUS {
+                        println!("        --- -1-- ----: connect to X bus");
                     }
                     if config & UNKNOWN_BIT7 == UNKNOWN_BIT7 {
                         println!("        --- 1--- ----: UNKNOWN bit 7 = 1");
