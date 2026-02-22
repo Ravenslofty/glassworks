@@ -425,7 +425,8 @@ impl Layout {
                         properties <= 0,
                         "4: {properties} has more than 0 properties"
                     );
-                    println!("    Z=4 - ??: {config:010b}");
+                    println!("    Z=4 - Clock?: {config:010b}");
+                    assert_eq!(config, 0b10_0000_0100);
                     //should_break = true;
                 }
                 5 => {
@@ -435,6 +436,7 @@ impl Layout {
                         "5: {properties} has more than 0 properties"
                     );
                     println!("    Z=5 - ??: {config:010b}");
+                    assert_eq!(config, 0b10_0000_0100);
                     //should_break = true;
                 }
                 6 => {
@@ -697,7 +699,10 @@ impl Layout {
                     println!("    Z=7 - ??: {config:09b}");
                 }
                 8 => {
-                    assert!(config <= 2047, "Pad/P-Bus Output: {config} has more than 11 config bits");
+                    assert!(
+                        config <= 2047,
+                        "Pad/P-Bus Output: {config} has more than 11 config bits"
+                    );
                     assert!(
                         properties <= 0,
                         "Pad/P-Bus Output: {properties} has more than 0 properties"
@@ -755,6 +760,367 @@ impl Layout {
         }
     }
 
+    fn disassemble_vertical_port_cell(&self, subelements: &[(i64, i64, i64)]) {
+        for &(z, properties, config) in subelements {
+            match z {
+                0 => {
+                    assert!(config <= 31, "0: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "0: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=0 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                1 => {
+                    assert!(config <= 31, "1: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 2,
+                        "1: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=1 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                2 => {
+                    assert!(config <= 31, "2: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "2: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=2 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                3 => {
+                    assert!(config <= 255, "3: {config} has more than 8 config bits");
+                    assert!(
+                        properties <= 1,
+                        "3: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=3 - ??: {config:08b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                4 => {
+                    assert!(config <= 127, "4: {config} has more than 7 config bits");
+                    assert!(
+                        properties <= 1,
+                        "4: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=4 - ??: {config:07b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                5 => {
+                    assert!(config <= 63, "5: {config} has more than 6 config bits");
+                    assert!(
+                        properties <= 1,
+                        "5: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=5 - ??: {config:06b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                6 => {
+                    assert!(config <= 31, "6: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "6: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=6 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                7 => {
+                    assert!(config <= 31, "7: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 2,
+                        "7: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=7 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                8 => {
+                    assert!(config <= 31, "8: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "8: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=8 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                _ => panic!(
+                    "    don't know how to disassemble vertical port cell z = {z} with config {config:b}"
+                ),
+            }
+        }
+    }
+
+    fn disassemble_horizontal_port_cell(&self, subelements: &[(i64, i64, i64)]) {
+        for &(z, properties, config) in subelements {
+            match z {
+                0 => {
+                    assert!(config <= 31, "0: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "0: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=0 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                1 => {
+                    assert!(config <= 31, "1: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "1: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=1 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                2 => {
+                    assert!(config <= 31, "2: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "2: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=2 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                3 => {
+                    assert!(config <= 255, "3: {config} has more than 8 config bits");
+                    assert!(
+                        properties <= 1,
+                        "3: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=3 - ??: {config:08b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                4 => {
+                    assert!(config <= 255, "4: {config} has more than 8 config bits");
+                    assert!(
+                        properties <= 1,
+                        "4: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=4 - ??: {config:08b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                5 => {
+                    assert!(config <= 63, "5: {config} has more than 6 config bits");
+                    assert!(
+                        properties <= 1,
+                        "5: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=5 - ??: {config:06b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                6 => {
+                    assert!(config <= 31, "6: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 2,
+                        "6: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=6 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                7 => {
+                    assert!(config <= 31, "7: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 2,
+                        "7: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=7 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                8 => {
+                    assert!(config <= 31, "8: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "8: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=8 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                _ => panic!(
+                    "    don't know how to disassemble horizontal port cell z = {z} with config {config:b}"
+                ),
+            }
+        }
+    }
+
+    fn disassemble_clock_port_cell(&self, subelements: &[(i64, i64, i64)]) {
+        for &(z, properties, config) in subelements {
+            match z {
+                0 => {
+                    assert!(config <= 3, "0: {config} has more than 2 config bits");
+                    assert!(
+                        properties <= 1,
+                        "0: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=0 - ??: {config:02b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                1 => {
+                    assert!(config <= 31, "1: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 0,
+                        "1: {properties} has more than 0 properties"
+                    );
+                    println!("    Z=1 - ??: {config:05b}");
+                }
+                2 => {
+                    assert!(config <= 1023, "2: {config} has more than 10 config bits");
+                    assert!(
+                        properties <= 1,
+                        "2: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=2 - ??: {config:010b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                3 => {
+                    assert!(config <= 1023, "3: {config} has more than 10 config bits");
+                    assert!(
+                        properties <= 1,
+                        "3: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=3 - ??: {config:010b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                4 => {
+                    assert!(config <= 31, "4: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 1,
+                        "4: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=4 - ??: {config:05b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                5 => {
+                    assert!(config <= 63, "5: {config} has more than 6 config bits");
+                    assert!(
+                        properties <= 1,
+                        "5: {properties} has more than 2 properties"
+                    );
+                    println!("    Z=5 - ??: {config:06b}");
+                    match properties {
+                        0 => println!("        properties=0: ??"),
+                        1 => println!("        properties=1: ??"),
+                        _ => panic!("unknown properties {properties}"),
+                    }
+                }
+                6 => {
+                    assert!(config <= 31, "6: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 0,
+                        "6: {properties} has more than 0 properties"
+                    );
+                    println!("    Z=6 - ??: {config:05b}");
+                }
+                7 => {
+                    assert!(config <= 31, "7: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 0,
+                        "7: {properties} has more than 0 properties"
+                    );
+                    println!("    Z=7 - ??: {config:05b}");
+                }
+                8 => {
+                    assert!(config <= 31, "8: {config} has more than 5 config bits");
+                    assert!(
+                        properties <= 0,
+                        "8: {properties} has more than 0 properties"
+                    );
+                    println!("    Z=8 - ??: {config:05b}");
+                }
+                _ => panic!(
+                    "    don't know how to disassemble clock port cell z = {z} with config {config:b}"
+                ),
+            }
+        }
+    }
+
     pub fn disassemble(&self) {
         let mut elements = BTreeMap::<(i64, i64), Vec<(i64, i64, i64)>>::new();
 
@@ -764,7 +1130,8 @@ impl Layout {
         }
 
         for ((x, y), subelements) in elements {
-            let standalone_core_cell = matches!(self.shape_transform, (0, 0, 0, 0, 0, 8)) && x == 0 && y == 0;
+            let standalone_core_cell =
+                matches!(self.shape_transform, (0, 0, 0, 0, 0, 8)) && x == 0 && y == 0;
             let within_core_cell = ((4_i64..14).contains(&x)
                 || (16_i64..26).contains(&x)
                 || (28_i64..38).contains(&x)
@@ -779,7 +1146,25 @@ impl Layout {
                     || (64_i64..74).contains(&y));
             let within_io_pad = (0..1).contains(&y);
             let within_peripheral_bus = (2..3).contains(&y);
-            if standalone || within_core_cell {
+            let within_horizontal_port_cell =
+                (x == 14 || x == 26 || x == 38 || x == 50 || x == 62 || x == 74)
+                    && ((4_i64..14).contains(&y)
+                        || (16_i64..26).contains(&y)
+                        || (28_i64..38).contains(&y)
+                        || (40_i64..50).contains(&y)
+                        || (52_i64..62).contains(&y)
+                        || (64_i64..74).contains(&y));
+            let within_vertical_port_cell = ((4_i64..14).contains(&x)
+                || (16_i64..26).contains(&x)
+                || (28_i64..38).contains(&x)
+                || (40_i64..50).contains(&x)
+                || (52_i64..62).contains(&x)
+                || (64_i64..74).contains(&x))
+                && (y == 14 || y == 26 || y == 38 || y == 50 || y == 62 || y == 74);
+            let within_clock_port_cell =
+                (x == 14 || x == 26 || x == 38 || x == 50 || x == 62 || x == 74)
+                    && (y == 14 || y == 26 || y == 38 || y == 50 || y == 62 || y == 74);
+            if standalone_core_cell || within_core_cell {
                 println!("({x}, {y}) = Core Cell:");
                 self.disassemble_core_cell(&subelements);
             } else if within_io_pad {
@@ -788,6 +1173,15 @@ impl Layout {
             } else if within_peripheral_bus {
                 println!("({x}, {y}) = Peripheral Bus?:");
                 self.disassemble_peripheral_bus(&subelements);
+            } else if within_horizontal_port_cell {
+                println!("({x}, {y}) = Horizontal Port Cell:");
+                self.disassemble_horizontal_port_cell(&subelements);
+            } else if within_vertical_port_cell {
+                println!("({x}, {y}) = Vertical Port Cell:");
+                self.disassemble_vertical_port_cell(&subelements);
+            } else if within_clock_port_cell {
+                println!("({x}, {y}) = Clock Port Cell:");
+                self.disassemble_clock_port_cell(&subelements);
             } else {
                 println!("({x}, {y}) = ???");
             }
