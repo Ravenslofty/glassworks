@@ -5,4 +5,5 @@ edition = "2024"
 license = "ISC"
 
 [dependencies]
+clap = "4.5.60"
 nom = "8.0.0"

@@ -8,14 +8,49 @@ use dev::Device;
 
 use std::fs::File;
 use std::io;
+use std::io::BufWriter;
+use std::io::Write;
+use std::path::PathBuf;
+
+use clap::{Command, arg, value_parser};
 
 fn main() -> io::Result<()> {
-    for filename in std::env::args().skip(1) {
-        let file = File::open(&filename)?;
-        println!("{filename}:");
+    let matches = Command::new("ArchParse")
+        .version("0.1.0")
+        .about("Parses the various binary formats describing MPA1000 family FPGAs")
+        .propagate_version(true)
+        .subcommand_required(true)
+        .arg_required_else_help(true)
+        .subcommand(
+            Command::new("dev")
+                .about("Parse and Dump Device Architecture Description")
+                .arg(arg!(<input>).value_parser(value_parser!(PathBuf)))
+                .arg(
+                    arg!(-o --output <output>)
+                        .required(false)
+                        .value_parser(value_parser!(PathBuf)),
+                ),
+        )
+        .get_matches();
 
-        let device = Device::new(file).unwrap();
-        println!("{device:#?}");
+    match matches.subcommand() {
+        Some(("dev", dev_matches)) => {
+            let filepath = dev_matches.get_one::<PathBuf>("input").expect("required");
+            let file = File::open(&filepath)?;
+            println!("{}:", filepath.display());
+
+            let mut output: Box<dyn Write> = match dev_matches.get_one::<PathBuf>("output") {
+                Some(out_path) => {
+                    println!("Output writing to {}", out_path.display());
+                    Box::new(BufWriter::new(File::create(&out_path)?))
+                }
+                None => Box::new(io::stdout()),
+            };
+
+            let device = Device::new(file).unwrap();
+            write!(output, "{device:#?}")?;
+        }
+        _ => unreachable!("All subcommands matched and subcommand_required prevents None"),
     }
 
     Ok(())
