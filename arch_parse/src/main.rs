@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: ISC
 
+mod cfg;
 mod dev;
 mod picture;
 mod util;
 
+use cfg::Config;
 use dev::Device;
 
 use std::fs::File;
@@ -31,6 +33,16 @@ fn main() -> io::Result<()> {
                         .value_parser(value_parser!(PathBuf)),
                 ),
         )
+        .subcommand(
+            Command::new("cfg")
+                .about("Parse and Dump Device Configuration Description")
+                .arg(arg!(<input>).value_parser(value_parser!(PathBuf)))
+                .arg(
+                    arg!(-o --output <output>)
+                        .required(false)
+                        .value_parser(value_parser!(PathBuf)),
+                ),
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -48,6 +60,22 @@ fn main() -> io::Result<()> {
             };
 
             let device = Device::new(file).unwrap();
+            write!(output, "{device:#?}")?;
+        }
+        Some(("cfg", dev_matches)) => {
+            let filepath = dev_matches.get_one::<PathBuf>("input").expect("required");
+            let file = File::open(&filepath)?;
+            println!("{}:", filepath.display());
+
+            let mut output: Box<dyn Write> = match dev_matches.get_one::<PathBuf>("output") {
+                Some(out_path) => {
+                    println!("Output writing to {}", out_path.display());
+                    Box::new(BufWriter::new(File::create(&out_path)?))
+                }
+                None => Box::new(io::stdout()),
+            };
+
+            let device = Config::new(file).unwrap();
             write!(output, "{device:#?}")?;
         }
         _ => unreachable!("All subcommands matched and subcommand_required prevents None"),
