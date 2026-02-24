@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: ISC
+
 use nom::{
     IResult, Parser,
     branch::alt,
