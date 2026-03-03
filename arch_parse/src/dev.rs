@@ -17,11 +17,11 @@ use crate::util::{parse_length_string, parse_u8_bool};
 use std::io::Read;
 
 #[derive(Debug, Default)]
-pub struct MysteryArray3 {
-    x: usize,
-    y: usize,
-    z: usize,
-    data: Vec<u16>,
+pub struct FloorPlan {
+    pub x: usize,
+    pub y: usize,
+    pub z: usize,
+    pub data: Vec<u16>,
 }
 
 #[derive(Debug, Default)]
@@ -31,12 +31,12 @@ pub struct Cell {
     flag: bool,
     a: u16,
     b: u16,
-    sub_elements: Vec<SubElement1>,
-    sub_element2s: Vec<SubElement2>,
+    patterns: Vec<Pattern>,
+    functions: Vec<Function>,
 }
 
 #[derive(Debug, Default)]
-pub struct SubElement1 {
+pub struct Pattern {
     flag: bool,
     a: u16,
     t1: (u16, u16, u16),
@@ -45,19 +45,19 @@ pub struct SubElement1 {
 }
 
 #[derive(Debug, Default)]
-pub struct SubElement2 {
+pub struct Function {
     name: String,
     a: u8,
     b: u32,
     flag: bool,
     picture: Option<Picture>,
-    sub_element1s: Vec<SubElement2SubElement1>,
+    bus_refs: Vec<BusRef>,
     c: u32,
-    sub_element2s: Vec<SubElement2SubElement2>,
+    attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, Default)]
-pub struct SubElement2SubElement1 {
+pub struct BusRef {
     f1: bool,
     f2: bool,
     f3: bool,
@@ -69,13 +69,13 @@ pub struct SubElement2SubElement1 {
 }
 
 #[derive(Debug, Default)]
-pub struct SubElement2SubElement2 {
-    a: u8,
-    val: SubElement2SubElement2Enum,
+pub struct Attribute {
+    kind: u8,
+    val: AttributeEnum,
 }
 
 #[derive(Debug, Default)]
-pub enum SubElement2SubElement2Enum {
+pub enum AttributeEnum {
     ThreeDoubles(String, String, String),
     StringList(Vec<String>), // Would have extra u32 with String if ver > 3
     DoubleList(Vec<String>), // Would have extra u32 with Double String if ver > 3
@@ -85,30 +85,21 @@ pub enum SubElement2SubElement2Enum {
 }
 
 #[derive(Debug, Default)]
-pub struct Element2 {
+pub struct Bus {
     name: String,
     a: u8,
-    sub_elements: Option<Vec<Element2SubElement>>,
+    bus_elements: Option<Vec<BusElement>>,
 }
 
 #[derive(Debug, Default)]
-pub struct Element2SubElement {
+pub struct BusElement {
     name: String,
     a: u32,
-    sub_elements: Vec<(u16, u16, u16)>,
-    weird: WeirdThing,
+    vec3s: Vec<(u16, u16, u16)>,
+    pattern: Pattern,
     picture: Option<Picture>,
     quad_u16: (u16, u16, u16, u16),
     b: u32,
-}
-
-#[derive(Debug, Default)]
-pub struct WeirdThing {
-    flag: bool,
-    a: u16,
-    t1: (u16, u16, u16),
-    t2: (u16, u16, u16),
-    t3: (u16, u16, u16),
 }
 
 #[derive(Debug, Default)]
@@ -117,9 +108,9 @@ pub struct Device {
     family: String,
     device: String,
     picture: Option<Picture>,
-    mystery_array3: MysteryArray3,
+    pub floorplan: FloorPlan,
     cells: Vec<Cell>,
-    element2s: Vec<Option<Element2>>,
+    busses: Vec<Option<Bus>>,
     io_pins: Vec<(u16, u16, u16)>,
 }
 
@@ -149,13 +140,15 @@ pub fn parse_device(input: &[u8]) -> IResult<&[u8], Device> {
     let (x, y, z) = (x as usize, y as usize, z as usize);
     let (input, data) = count(be_u16, x * y * z).parse(input)?;
 
-    let mystery_array3 = MysteryArray3 { x, y, z, data };
+    let floorplan = FloorPlan { x, y, z, data };
 
     let (input, cells) = parse_cell_array(input)?;
 
-    let (input, element2s) = parse_element2_array(input)?;
+    let (input, busses) = parse_bus_array(input)?;
 
     let (input, io_pins) = length_count(be_u32, (be_u16, be_u16, be_u16)).parse(input)?;
+
+    //println!("Cells: {} Buss: {} IoPins: {}", cells.len(), busses.len(), io_pins.len());
 
     Ok((
         input,
@@ -164,9 +157,9 @@ pub fn parse_device(input: &[u8]) -> IResult<&[u8], Device> {
             family,
             device,
             picture,
-            mystery_array3,
+            floorplan,
             cells,
-            element2s,
+            busses,
             io_pins,
         },
     ))
@@ -176,7 +169,7 @@ fn parse_3_be_u16(input: &[u8]) -> IResult<&[u8], (u16, u16, u16)> {
     (be_u16, be_u16, be_u16).parse(input)
 }
 
-fn parse_sub_element1(input: &[u8]) -> IResult<&[u8], SubElement1> {
+fn parse_pattern(input: &[u8]) -> IResult<&[u8], Pattern> {
     let (input, (flag, a, t1, t2, t3)) = (
         parse_u8_bool,
         be_u16,
@@ -187,7 +180,7 @@ fn parse_sub_element1(input: &[u8]) -> IResult<&[u8], SubElement1> {
         .parse(input)?;
     Ok((
         input,
-        SubElement1 {
+        Pattern {
             flag,
             a,
             t1,
@@ -197,42 +190,42 @@ fn parse_sub_element1(input: &[u8]) -> IResult<&[u8], SubElement1> {
     ))
 }
 
-fn parse_sub_element2(input: &[u8]) -> IResult<&[u8], SubElement2> {
-    let (input, (name, a, b, flag, picture, sub_element1s, c, sub_element2s)) = (
+fn parse_function(input: &[u8]) -> IResult<&[u8], Function> {
+    let (input, (name, a, b, flag, picture, bus_refs, c, attributes)) = (
         parse_length_string,
         be_u8,
         be_u32,
         parse_u8_bool,
         parse_picture_bin,
-        parse_sub_element2_sub_element1_array,
+        dbg_dmp(parse_bus_ref_array, "bus_refs"),
         be_u32,
-        //This is only present if ver is <2
-        length_count(be_u32, parse_sub_element2_sub_element2),
+        //This is only present if ver is >2
+        length_count(be_u32, dbg_dmp(parse_attribute, "attribute")),
     )
         .parse(input)?;
     Ok((
         input,
-        SubElement2 {
+        Function {
             name,
             a,
             b,
             flag,
             picture,
-            sub_element1s,
+            bus_refs,
             c,
-            sub_element2s,
+            attributes,
         },
     ))
 }
 
-fn parse_sub_element2_sub_element1_array(
+fn parse_bus_ref_array(
     input: &[u8],
-) -> IResult<&[u8], Vec<SubElement2SubElement1>> {
+) -> IResult<&[u8], Vec<BusRef>> {
     let (input, elems) = map((be_u32, be_u32), |(x, _)| x as usize).parse(input)?;
-    count(parse_sub_element2_sub_element1, elems).parse(input)
+    count(parse_bus_ref, elems).parse(input)
 }
 
-fn parse_sub_element2_sub_element1(input: &[u8]) -> IResult<&[u8], SubElement2SubElement1> {
+fn parse_bus_ref(input: &[u8]) -> IResult<&[u8], BusRef> {
     let (input, (f1, f2, f3, f4, a, b, picture, c)) = (
         parse_u8_bool,
         parse_u8_bool,
@@ -241,13 +234,14 @@ fn parse_sub_element2_sub_element1(input: &[u8]) -> IResult<&[u8], SubElement2Su
         be_u16,
         be_u32,
         parse_picture_bin,
+        // Only present before version 5
         be_u32,
     )
         .parse(input)?;
 
     Ok((
         input,
-        SubElement2SubElement1 {
+        BusRef {
             f1,
             f2,
             f3,
@@ -260,8 +254,9 @@ fn parse_sub_element2_sub_element1(input: &[u8]) -> IResult<&[u8], SubElement2Su
     ))
 }
 
-fn parse_sub_element2_sub_element2(input: &[u8]) -> IResult<&[u8], SubElement2SubElement2> {
-    let (input, (a, typ)) = (be_u8, be_u8).parse(input)?;
+fn parse_attribute(input: &[u8]) -> IResult<&[u8], Attribute> {
+    let (input, (kind, typ)) = (be_u8, be_u8).parse(input)?;
+    //println!("attribute type: {typ}");
     let (input, val) = match typ {
         0 => map(
             (
@@ -269,22 +264,22 @@ fn parse_sub_element2_sub_element2(input: &[u8]) -> IResult<&[u8], SubElement2Su
                 parse_length_string,
                 parse_length_string,
             ),
-            |(x, y, z)| SubElement2SubElement2Enum::ThreeDoubles(x, y, z),
+            |(x, y, z)| AttributeEnum::ThreeDoubles(x, y, z),
         )
         .parse(input)?,
         1 => map(length_count(be_u32, parse_length_string), |v| {
-            SubElement2SubElement2Enum::StringList(v)
+            AttributeEnum::StringList(v)
         })
         .parse(input)?, // Would include a u32 in the list content if ver > 3
         2 => map(length_count(be_u32, parse_length_string), |v| {
-            SubElement2SubElement2Enum::DoubleList(v)
+            AttributeEnum::DoubleList(v)
         })
         .parse(input)?, // Would include a u32 in the list content if ver > 3
         // 3 => Would have two u32s if ver > 3
-        _ => fail::<_, SubElement2SubElement2Enum, _>().parse(input)?,
+        _ => fail::<_, AttributeEnum, _>().parse(input)?,
     };
 
-    Ok((input, SubElement2SubElement2 { a, val }))
+    Ok((input, Attribute { kind, val }))
 }
 
 pub fn parse_cell(input: &[u8]) -> IResult<&[u8], Cell> {
@@ -293,11 +288,11 @@ pub fn parse_cell(input: &[u8]) -> IResult<&[u8], Cell> {
     let (input, flag) = be_u8(input)?;
     //println!("Cell name: {}", name);
     let (input, (a, b)) = (be_u16, be_u16).parse(input)?;
-    let (input, sub_elements) = length_count(be_u32, parse_sub_element1).parse(input)?;
-    let (input, sub_element2s_present) = be_u8(input)?;
-    let (input, sub_element2s) = if sub_element2s_present != 0 {
+    let (input, patterns) = length_count(be_u32, parse_pattern).parse(input)?;
+    let (input, functions_present) = be_u8(input)?;
+    let (input, functions) = if functions_present != 0 {
         let (input, elems) = map((be_u32, be_u32), |(elems, _elem_size)| elems).parse(input)?;
-        count(parse_sub_element2, elems as usize).parse(input)?
+        count(dbg_dmp(parse_function, "function"), elems as usize).parse(input)?
     } else {
         (input, vec![])
     };
@@ -307,8 +302,8 @@ pub fn parse_cell(input: &[u8]) -> IResult<&[u8], Cell> {
         flag: flag == 0x1,
         a,
         b,
-        sub_elements,
-        sub_element2s,
+        patterns,
+        functions,
     };
     //println!("{:#?}", result);
     Ok((input, result))
@@ -321,24 +316,24 @@ fn parse_cell_array(input: &[u8]) -> IResult<&[u8], Vec<Cell>> {
     Ok((input, cells))
 }
 
-fn parse_element2(input: &[u8]) -> IResult<&[u8], Option<Element2>> {
+fn parse_bus(input: &[u8]) -> IResult<&[u8], Option<Bus>> {
     let (input, present) = parse_u8_bool(input)?;
     if present {
-        let (input, (name, a, sub_elems_present)) =
+        let (input, (name, a, bus_elems_present)) =
             (parse_length_string, be_u8, parse_u8_bool).parse(input)?;
         //println!("Elment2: {}", name);
-        let (input, sub_elements) = if sub_elems_present {
-            map(parse_element2_sub_element_array, |v| Some(v)).parse(input)?
+        let (input, bus_elements) = if bus_elems_present {
+            map(parse_bus_element_array, |v| Some(v)).parse(input)?
         } else {
             (input, None)
         };
 
         Ok((
             input,
-            Some(Element2 {
+            Some(Bus {
                 name,
                 a,
-                sub_elements,
+                bus_elements,
             }),
         ))
     } else {
@@ -346,18 +341,18 @@ fn parse_element2(input: &[u8]) -> IResult<&[u8], Option<Element2>> {
     }
 }
 
-fn parse_element2_array(input: &[u8]) -> IResult<&[u8], Vec<Option<Element2>>> {
+fn parse_bus_array(input: &[u8]) -> IResult<&[u8], Vec<Option<Bus>>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, element2s) = count(dbg_dmp(parse_element2, "element2"), length).parse(input)?;
-    Ok((input, element2s))
+    let (input, busses) = count(dbg_dmp(parse_bus, "bus"), length).parse(input)?;
+    Ok((input, busses))
 }
 
-fn parse_element2_sub_element(input: &[u8]) -> IResult<&[u8], Element2SubElement> {
+fn parse_bus_element(input: &[u8]) -> IResult<&[u8], BusElement> {
     let (input, (name, a)) = (parse_length_string, be_u32).parse(input)?;
-    let (input, sub_elements) = parse_element2_sub_sub_element_array(input)?;
-    let (input, (weird, picture, quad_u16, b)) = (
-        parse_weird,
+    let (input, vec3s) = parse_bus_element_vec3_array(input)?;
+    let (input, (pattern, picture, quad_u16, b)) = (
+        parse_pattern,
         parse_picture_bin,
         (be_u16, be_u16, be_u16, be_u16),
         be_u32,
@@ -366,11 +361,11 @@ fn parse_element2_sub_element(input: &[u8]) -> IResult<&[u8], Element2SubElement
 
     Ok((
         input,
-        Element2SubElement {
+        BusElement {
             name,
             a,
-            sub_elements,
-            weird,
+            vec3s,
+            pattern,
             picture,
             quad_u16,
             b,
@@ -378,50 +373,24 @@ fn parse_element2_sub_element(input: &[u8]) -> IResult<&[u8], Element2SubElement
     ))
 }
 
-fn parse_weird(input: &[u8]) -> IResult<&[u8], WeirdThing> {
-    let (input, (flag, a, t1, t2, t3)) = (
-        parse_u8_bool,
-        be_u16,
-        (be_u16, be_u16, be_u16),
-        (be_u16, be_u16, be_u16),
-        (be_u16, be_u16, be_u16),
-    )
-        .parse(input)?;
-    Ok((
-        input,
-        WeirdThing {
-            flag,
-            a,
-            t1,
-            t2,
-            t3,
-        },
-    ))
-}
-
-fn parse_element2_sub_element_array(input: &[u8]) -> IResult<&[u8], Vec<Element2SubElement>> {
+fn parse_bus_element_array(input: &[u8]) -> IResult<&[u8], Vec<BusElement>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, element2sub_elems) = count(
-        dbg_dmp(parse_element2_sub_element, "element2sub_element"),
+    let (input, bus_elements) = count(
+        dbg_dmp(parse_bus_element, "bus_element"),
         length,
     )
     .parse(input)?;
-    Ok((input, element2sub_elems))
+    Ok((input, bus_elements))
 }
 
-fn parse_element2_sub_sub_element_array(input: &[u8]) -> IResult<&[u8], Vec<(u16, u16, u16)>> {
+fn parse_bus_element_vec3_array(input: &[u8]) -> IResult<&[u8], Vec<(u16, u16, u16)>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, element2sub_elems) = count(
-        dbg_dmp(parse_element2_sub_sub_element, "element2sub_sub_element"),
+    let (input, vec3s) = count(
+        dbg_dmp(parse_3_be_u16, "vec3"),
         length,
     )
     .parse(input)?;
-    Ok((input, element2sub_elems))
-}
-
-fn parse_element2_sub_sub_element(input: &[u8]) -> IResult<&[u8], (u16, u16, u16)> {
-    let (input, t) = (be_u16, be_u16, be_u16).parse(input)?;
-    Ok((input, t))
+    Ok((input, vec3s))
 }
