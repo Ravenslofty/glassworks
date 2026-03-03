@@ -153,7 +153,7 @@ impl Layout {
         Some(this)
     }
 
-    fn disassemble_core_cell(&self, subelements: &[(i64, i64, i64)]) {
+    fn disassemble_core_cell(&self, kind: i8, subelements: &[(i64, i64, i64)]) {
         let mut should_break = false;
         let mut should_break_2 = true;
         for &(z, properties, config) in subelements {
@@ -164,9 +164,7 @@ impl Layout {
                         properties <= 1,
                         "A input mux: {properties} has more than 2 properties"
                     );
-                    const INPUT_INVERTED: i64 = 0b00_0000_0001;
-                    /// Never set?
-                    const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
+                    const INPUT_NORMAL: i64 = 0b00_0000_0001;
                     const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
                     const VERTICAL_MEDIUM_BUS: i64 = 0b10_0000_1000;
                     const LL_LOCAL_INTERCONNECT: i64 = 0b10_0001_0000;
@@ -174,39 +172,24 @@ impl Layout {
                     const FBB_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
                     const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
                     const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
-                    const MUX_ENABLE: i64 = 0b10_0000_0000;
 
-                    println!("    Z=0 - \"imux_2_wor\" A input mux:");
-                    if config & INPUT_INVERTED == INPUT_INVERTED {
-                        println!("        -- ---- ---1: input inverted");
+                    println!("    Z=0 - \"imux_2\" A input mux:");
+                    // Output is in order of config bits in the bitstream
+                    if config & INPUT_NORMAL == INPUT_NORMAL {
+                        println!("        ------- 1: input polarity normal");
+                    } else {
+                        println!("        ------- 0: input polarity inverted");
                     }
-                    if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
-                        println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
-                        should_break = true;
-                    }
-                    if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
-                        println!("        1- ---- -1--: input = horizontal medium bus");
-                    }
-                    if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
-                        println!("        1- ---- 1---: input = vertical medium bus");
-                    }
-                    if config & LL_LOCAL_INTERCONNECT == LL_LOCAL_INTERCONNECT {
-                        println!("        1- ---1 ----: input = LL local interconnect");
-                    }
-                    if config & U_LOCAL_INTERCONNECT == U_LOCAL_INTERCONNECT {
-                        println!("        1- --1- ----: input = U local interconnect");
-                    }
-                    if config & FBB_LOCAL_INTERCONNECT == FBB_LOCAL_INTERCONNECT {
-                        println!("        1- -1-- ----: input = FBB local interconnect");
-                    }
-                    if config & FB_LOCAL_INTERCONNECT == FB_LOCAL_INTERCONNECT {
-                        println!("        1- 1--- ----: input = FB local interconnect");
-                    }
-                    if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
-                        println!("        11 ---- ----: input = F local interconnect");
-                    }
-                    if config & MUX_ENABLE == 0 {
-                        println!("        0- ---- ----: input = constant");
+                    match config & !1 {
+                        FBB_LOCAL_INTERCONNECT => println!("        ------1 -: input = FBB local interconnect"),
+                        FB_LOCAL_INTERCONNECT  => println!("        -----1- -: input = FB local interconnect"),
+                        LL_LOCAL_INTERCONNECT  => println!("        ----1-- -: input = LL local interconnect"),
+                        F_LOCAL_INTERCONNECT   => println!("        ---1--- -: input = F  local interconnect"),
+                        U_LOCAL_INTERCONNECT   => println!("        --1---- -: input = U  local interconnect"),
+                        HORIZONTAL_MEDIUM_BUS  => println!("        -1----- -: input = horizontal medium bus"),
+                        VERTICAL_MEDIUM_BUS    => println!("        1------ -: input = vertical medium bus"),
+                        0                      => println!("        0000000 -: input = VCC"),
+                        _                      => panic!("illegal config {config:010b} for imux_2")
                     }
                     match properties {
                         0 => println!("        properties=0: \"route\" noninverted"),
@@ -223,9 +206,7 @@ impl Layout {
                         properties <= 1,
                         "B input mux: {properties} has more than 2 properties"
                     );
-                    const INPUT_INVERTED: i64 = 0b00_0000_0001;
-                    /// Never set?
-                    const UNKNOWN_BIT1: i64 = 0b00_0000_0010;
+                    const INPUT_NORMAL: i64 = 0b00_0000_0001;
                     const HORIZONTAL_MEDIUM_BUS: i64 = 0b10_0000_0100;
                     const VERTICAL_MEDIUM_BUS: i64 = 0b10_0000_1000;
                     const UU_LOCAL_INTERCONNECT: i64 = 0b10_0001_0000;
@@ -233,39 +214,24 @@ impl Layout {
                     const FF_LOCAL_INTERCONNECT: i64 = 0b10_0100_0000;
                     const FB_LOCAL_INTERCONNECT: i64 = 0b10_1000_0000;
                     const F_LOCAL_INTERCONNECT: i64 = 0b11_0000_0000;
-                    const MUX_ENABLE: i64 = 0b10_0000_0000;
 
-                    println!("    Z=1 - \"imux_1_wor\" B input mux:");
-                    if config & INPUT_INVERTED == INPUT_INVERTED {
-                        println!("        -- ---- ---1: input inverted");
+                    println!("    Z=1 - \"imux_1\" B input mux:");
+                    // Output is in order of config bits in the bitstream
+                    if config & INPUT_NORMAL == INPUT_NORMAL {
+                        println!("        ------- 1: input polarity normal");
+                    } else {
+                        println!("        ------- 0: input polarity inverted");
                     }
-                    if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
-                        println!("        -- ---- --1-: UNKNOWN bit 1 = 1");
-                        should_break = true;
-                    }
-                    if config & HORIZONTAL_MEDIUM_BUS == HORIZONTAL_MEDIUM_BUS {
-                        println!("        1- ---- -1--: input = horizontal medium bus");
-                    }
-                    if config & VERTICAL_MEDIUM_BUS == VERTICAL_MEDIUM_BUS {
-                        println!("        1- ---- 1---: input = vertical medium bus");
-                    }
-                    if config & UU_LOCAL_INTERCONNECT == UU_LOCAL_INTERCONNECT {
-                        println!("        1- ---1 ----: input = UU local interconnect");
-                    }
-                    if config & L_LOCAL_INTERCONNECT == L_LOCAL_INTERCONNECT {
-                        println!("        1- --1- ----: input = L local interconnect");
-                    }
-                    if config & FF_LOCAL_INTERCONNECT == FF_LOCAL_INTERCONNECT {
-                        println!("        1- -1-- ----: input = FF local interconnect");
-                    }
-                    if config & FB_LOCAL_INTERCONNECT == FB_LOCAL_INTERCONNECT {
-                        println!("        1- 1--- ----: input = FB local interconnect");
-                    }
-                    if config & F_LOCAL_INTERCONNECT == F_LOCAL_INTERCONNECT {
-                        println!("        11 ---- ----: input = F local interconnect");
-                    }
-                    if config & MUX_ENABLE == 0 {
-                        println!("        0- ---- ----: input = constant");
+                    match config & !1 {
+                        HORIZONTAL_MEDIUM_BUS => println!("        ------1 -: input = horizontal medium bus"),
+                        FB_LOCAL_INTERCONNECT => println!("        -----1- -: input = FB local interconnect"),
+                        L_LOCAL_INTERCONNECT  => println!("        ----1-- -: input = L  local interconnect"),
+                        F_LOCAL_INTERCONNECT  => println!("        ---1--- -: input = F  local interconnect"),
+                        UU_LOCAL_INTERCONNECT => println!("        --1---- -: input = UU local interconnect"),
+                        VERTICAL_MEDIUM_BUS   => println!("        -1----- -: input = vertical medium bus"),
+                        FF_LOCAL_INTERCONNECT => println!("        1------ -: input = FF local interconnect"),
+                        0                     => println!("        0000000 -: input = VCC"),
+                        _                     => panic!("illegal config {config:010b} for imux_1")
                     }
                     match properties {
                         0 => println!("        properties=0: \"route\" noninverted"),
@@ -286,7 +252,7 @@ impl Layout {
                     const UNKNOWN_BIT3: i64 = 0b0_1000;
                     const UNKNOWN_BIT4: i64 = 0b1_0000;
 
-                    println!("    Z=2 - \"func_wor\" ??:");
+                    println!("    Z=2 - \"func\" function:");
 
                     if config & RESET == RESET {
                         println!("        - ---1: connect to reset");
@@ -311,112 +277,26 @@ impl Layout {
                         1 => println!("        properties=1: \"buf\" buffer"),
                         2 => println!("        properties=2: \"tie_hi\" pull-up"),
                         3 => println!("        properties=3: \"tie_lo\" pull-down"),
-                        4 => println!("        properties=4: xor/dff"),
-                        5 => println!("        properties=5: dlatch"),
+                        4 => println!("        properties=4: \"xor\" (if type 2/4) / \"flipflop\" (if type 3)"),
+                        5 => println!("        properties=5: \"mux\" (if type 4) / \"latch\" (if type 3)"),
                         _ => panic!("unknown properties {properties}"),
                     }
                 }
                 3 => {
                     assert!(
                         config <= 524287,
-                        "medium bus: {config} has more than 19 config bits"
+                        "wired-OR: {config} has more than 19 config bits"
                     );
                     assert!(
                         properties <= 0,
-                        "medium bus: {properties} has more than 0 properties"
+                        "wired-OR: {properties} has more than 0 properties"
                     );
-                    /// This only ever appears on buffers.
-                    const UNKNOWN_BIT0: i64 = 0b000_0000_0000_0000_0001;
-                    const LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS: i64 =
-                        0b000_0000_0000_0000_0010;
-                    /// Never set?
-                    const UNKNOWN_BIT2: i64 = 0b000_0000_0000_0000_0100;
-                    /// Never set?
-                    const UNKNOWN_BIT3: i64 = 0b000_0000_0000_0000_1000;
-                    /// Never set?
-                    const UNKNOWN_BIT4: i64 = 0b000_0000_0000_0001_0000;
-                    /// Never set?
-                    const UNKNOWN_BIT5: i64 = 0b000_0000_0000_0010_0000;
-                    const UU_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0000_0100_0000;
-                    const LL_B_LOCAL_INTERCONNECT: i64 = 0b000_0000_0000_1000_0000;
-                    const U_B_LOCAL_INTERCONNECT: i64 = 0b000_0000_0001_0000_0000;
-                    const L_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0010_0000_0000;
-                    const FBB_A_LOCAL_INTERCONNECT: i64 = 0b000_0000_0100_0000_0000;
-                    /// Never set?
-                    const UNKNOWN_BIT11: i64 = 0b000_0000_1000_0000_0000;
-                    const FF_B_LOCAL_INTERCONNECT: i64 = 0b000_0001_0000_0000_0000;
-                    const FB_A_LOCAL_INTERCONNECT: i64 = 0b000_0010_0000_0000_0000;
-                    const FB_B_LOCAL_INTERCONNECT: i64 = 0b000_0100_0000_0000_0000;
-                    const F_A_LOCAL_INTERCONNECT: i64 = 0b000_1000_0000_0000_0000;
-                    const F_B_LOCAL_INTERCONNECT: i64 = 0b001_0000_0000_0000_0000;
-                    /// Never set?
                     const WIRED_OR: i64 = 0b010_0000_0000_0000_0000;
-                    /// This only ever appears on buffers.
-                    const UNKNOWN_BIT18: i64 = 0b100_0000_0000_0000_0000;
 
-                    println!("    Z=3 - \"omux_wor\" medium bus??");
-                    if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                        println!("        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1 (buffer?)");
-                    }
-                    if config & LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
-                        == LOCAL_INTERCONNECT_CONNECTED_TO_MEDIUM_BUS
-                    {
-                        println!(
-                            "        --- ---- ---- ---- --1-: connect medium bus to local interconnect"
-                        );
-                    }
-                    if config & UNKNOWN_BIT2 == UNKNOWN_BIT2 {
-                        println!("        --- ---- ---- ---- -1--: UNKNOWN bit 2 = 1");
-                    }
-                    if config & UNKNOWN_BIT3 == UNKNOWN_BIT3 {
-                        println!("        --- ---- ---- ---- 1---: UNKNOWN bit 3 = 1");
-                    }
-                    if config & UNKNOWN_BIT4 == UNKNOWN_BIT4 {
-                        println!("        --- ---- ---- ---1 ----: UNKNOWN bit 4 = 1");
-                    }
-                    if config & UNKNOWN_BIT5 == UNKNOWN_BIT5 {
-                        println!("        --- ---- ---- --1- ----: UNKNOWN bit 5 = 1");
-                    }
-                    if config & UU_A_LOCAL_INTERCONNECT == UU_A_LOCAL_INTERCONNECT {
-                        println!("        --- ---- ---- -1-- ----: UU.A local interconnect");
-                    }
-                    if config & LL_B_LOCAL_INTERCONNECT == LL_B_LOCAL_INTERCONNECT {
-                        println!("        --- ---- ---- 1--- ----: LL.B local interconnect");
-                    }
-                    if config & U_B_LOCAL_INTERCONNECT == U_B_LOCAL_INTERCONNECT {
-                        println!("        --- ---- ---1 ---- ----: U.B local interconnect");
-                    }
-                    if config & L_A_LOCAL_INTERCONNECT == L_A_LOCAL_INTERCONNECT {
-                        println!("        --- ---- --1- ---- ----: L.A local interconnect");
-                    }
-                    if config & FBB_A_LOCAL_INTERCONNECT == FBB_A_LOCAL_INTERCONNECT {
-                        println!("        --- ---- -1-- ---- ----: FBB.A local interconnect");
-                    }
-                    if config & UNKNOWN_BIT11 == UNKNOWN_BIT11 {
-                        println!("        --- ---- 1--- ---- ----: UNKNOWN bit 11 = 1");
-                        should_break = true;
-                    }
-                    if config & FF_B_LOCAL_INTERCONNECT == FF_B_LOCAL_INTERCONNECT {
-                        println!("        --- ---1 ---- ---- ----: FF.B local interconnect");
-                    }
-                    if config & FB_A_LOCAL_INTERCONNECT == FB_A_LOCAL_INTERCONNECT {
-                        println!("        --- --1- ---- ---- ----: FB.A local interconnect");
-                    }
-                    if config & FB_B_LOCAL_INTERCONNECT == FB_B_LOCAL_INTERCONNECT {
-                        println!("        --- -1-- ---- ---- ----: FB.B local interconnect");
-                    }
-                    if config & F_A_LOCAL_INTERCONNECT == F_A_LOCAL_INTERCONNECT {
-                        println!("        --- 1--- ---- ---- ----: F.A local interconnect");
-                    }
-                    if config & F_B_LOCAL_INTERCONNECT == F_B_LOCAL_INTERCONNECT {
-                        println!("        --1 ---- ---- ---- ----: F.B local interconnect");
-                    }
-                    if config & WIRED_OR == WIRED_OR {
-                        println!("        -1- ---- ---- ---- ----: wired-OR");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT18 == UNKNOWN_BIT18 {
-                        println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1 (buffer?)");
+                    println!("    Z=3 - \"omux\" wired-OR");
+                    match config {
+                        WIRED_OR => println!("        1: wired-OR"),
+                        _       => (), // a lot of virtual cruft
                     }
                 }
                 4 => {
@@ -425,9 +305,10 @@ impl Layout {
                         properties <= 0,
                         "4: {properties} has more than 0 properties"
                     );
-                    println!("    Z=4 - Clock?: {config:010b}");
-                    assert_eq!(config, 0b10_0000_0100);
-                    //should_break = true;
+                    println!("    Z=4 - \"imux_c1\" Clock?: {config:010b}");
+                    if config == 4 {
+                        println!("        1: enabled??")
+                    }
                 }
                 5 => {
                     assert!(config <= 1023, "5: {config} has more than 10 config bits");
@@ -435,9 +316,10 @@ impl Layout {
                         properties == 0,
                         "5: {properties} has more than 0 properties"
                     );
-                    println!("    Z=5 - ??: {config:010b}");
-                    assert_eq!(config, 0b10_0000_0100);
-                    //should_break = true;
+                    println!("    Z=5 - \"imux_rst\" Reset");
+                    if config == 0x204 {
+                        println!("        0: enabled??")
+                    }
                 }
                 6 => {
                     assert!(config <= 3, "X Bus: {config} has more than 2 config bits");
@@ -449,11 +331,11 @@ impl Layout {
                     const LEFT_VERTICAL_X_BUS: i64 = 0b01;
                     const BELOW_HORIZONTAL_X_BUS: i64 = 0b10;
                     if config & (LEFT_VERTICAL_X_BUS | BELOW_HORIZONTAL_X_BUS) == (LEFT_VERTICAL_X_BUS | BELOW_HORIZONTAL_X_BUS) {
-                        println!("        11: connect vertical and horizontal X bus");
+                        println!("        1: connect vertical and horizontal X bus");
                     }
                     match properties {
-                        0 => println!("        properties=0: \"v2h\" [virtual] vertical-to-horizontal"),
-                        1 => println!("        properties=1: \"h2v\" [virtual] horizontal-to-vertical"),
+                        0 => println!("        properties=0: \"v2h\" [VIRTUAL] vertical-to-horizontal"),
+                        1 => println!("        properties=1: \"h2v\" [VIRTUAL] horizontal-to-vertical"),
                         _ => panic!("unknown properties {properties}"),
                     }
                 }
@@ -499,22 +381,10 @@ impl Layout {
                     const UNKNOWN_BIT17: i64 = 0b010_0000_0000_0000_0000;
                     const UNKNOWN_BIT18: i64 = 0b100_0000_0000_0000_0000;
 
-                    println!("    Z=7 - \"bmux_wor\" function??:");
-                    if config & UNKNOWN_BIT0 == UNKNOWN_BIT0 {
-                        println!("        --- ---- ---- ---- ---1: UNKNOWN bit 0 = 1");
-                    }
-                    if config & UNKNOWN_BIT1 == UNKNOWN_BIT1 {
-                        println!("        --- ---- ---- ---- --1-: UNKNOWN bit 1 = 1");
-                        should_break = true;
-                    }
+                    println!("    Z=7 - \"bmux\" function??:");
                     if config & BELOW_HORIZONTAL_MEDIUM_BUS == BELOW_HORIZONTAL_MEDIUM_BUS {
                         println!(
                             "        --- ---- ---- ---- -1--: connect to below horizontal medium bus"
-                        );
-                    }
-                    if config & LEFT_VERTICAL_MEDIUM_BUS == LEFT_VERTICAL_MEDIUM_BUS {
-                        println!(
-                            "        --- ---- ---- ---- 1---: connect to left vertical medium bus"
                         );
                     }
                     if config & ABOVE_HORIZONTAL_MEDIUM_BUS == ABOVE_HORIZONTAL_MEDIUM_BUS {
@@ -522,62 +392,19 @@ impl Layout {
                             "        --- ---- ---- ---1 ----: connect to above horizontal medium bus"
                         );
                     }
+                    if config & LEFT_VERTICAL_MEDIUM_BUS == LEFT_VERTICAL_MEDIUM_BUS {
+                        println!(
+                            "        --- ---- ---- ---- 1---: connect to left vertical medium bus"
+                        );
+                    }
+
                     if config & RIGHT_VERTICAL_MEDIUM_BUS == RIGHT_VERTICAL_MEDIUM_BUS {
                         println!(
                             "        --- ---- ---- --1- ----: connect to right vertical medium bus"
                         );
                     }
-                    if config & UNKNOWN_BIT6 == UNKNOWN_BIT6 {
-                        println!("        --- ---- ---- -1-- ----: UNKNOWN bit 6 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT7 == UNKNOWN_BIT7 {
-                        println!("        --- ---- ---- 1--- ----: UNKNOWN bit 7 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT8 == UNKNOWN_BIT8 {
-                        println!("        --- ---- ---1 ---- ----: UNKNOWN bit 8 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT9 == UNKNOWN_BIT9 {
-                        println!("        --- ---- --1- ---- ----: UNKNOWN bit 9 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT10 == UNKNOWN_BIT10 {
-                        println!("        --- ---- -1-- ---- ----: UNKNOWN bit 10 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT11 == UNKNOWN_BIT11 {
-                        println!("        --- ---- 1--- ---- ----: UNKNOWN bit 11 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT12 == UNKNOWN_BIT12 {
-                        println!("        --- ---1 ---- ---- ----: UNKNOWN bit 12 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT13 == UNKNOWN_BIT15 {
-                        println!("        --- --1- ---- ---- ----: UNKNOWN bit 13 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT14 == UNKNOWN_BIT14 {
-                        println!("        --- -1-- ---- ---- ----: UNKNOWN bit 14 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT15 == UNKNOWN_BIT15 {
-                        println!("        --- 1--- ---- ---- ----: UNKNOWN bit 15 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT16 == UNKNOWN_BIT16 {
-                        println!("        --1 ---- ---- ---- ----: UNKNOWN bit 16 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT17 == UNKNOWN_BIT17 {
-                        println!("        -1- ---- ---- ---- ----: UNKNOWN bit 17 = 1");
-                        should_break = true;
-                    }
-                    if config & UNKNOWN_BIT18 == UNKNOWN_BIT18 {
-                        println!("        1-- ---- ---- ---- ----: UNKNOWN bit 18 = 1");
-                        //should_break = true;
+                    if config & (UNKNOWN_BIT18 | UNKNOWN_BIT0) == (UNKNOWN_BIT18 | UNKNOWN_BIT0) {
+                        println!("        1-- ---- ---- ---- ---1: ???");
                     }
                 }
                 8 => {
@@ -919,9 +746,12 @@ impl Layout {
                         properties <= 1,
                         "2: {properties} has more than 2 properties"
                     );
-                    println!("    Z=2 - ??: {config:05b}");
+                    println!("    Z=2 - \"port_mbb_right\" ??: {config:05b}");
+                    if config & 2 == 2 {
+                        println!("        ---1-: ??");
+                    }
                     match properties {
-                        0 => println!("        properties=0: ??"),
+                        0 => println!("        properties=0: \"input\""),
                         1 => println!("        properties=1: ??"),
                         _ => panic!("unknown properties {properties}"),
                     }
@@ -958,7 +788,10 @@ impl Layout {
                         properties <= 1,
                         "5: {properties} has more than 2 properties"
                     );
-                    println!("    Z=5 - ??: {config:06b}");
+                    println!("    Z=5 - \"port_worb_right\" ??: {config:06b}");
+                    if config & 2 == 2 {
+                        println!("        ----1-: wired-OR");
+                    }
                     match properties {
                         0 => println!("        properties=0: ??"),
                         1 => println!("        properties=1: ??"),
@@ -1163,7 +996,7 @@ impl Layout {
                     && (y == 14 || y == 26 || y == 38 || y == 50 || y == 62 || y == 74);
             if standalone_core_cell || within_core_cell {
                 println!("({x}, {y}) = Core Cell:");
-                self.disassemble_core_cell(&subelements);
+                self.disassemble_core_cell(1, &subelements);
             } else if within_io_pad {
                 println!("({x}, {y}) = I/O Pad:");
                 self.disassemble_io_pad(&subelements);
