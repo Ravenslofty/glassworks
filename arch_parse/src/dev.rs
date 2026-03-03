@@ -15,6 +15,10 @@ use crate::picture::{Picture, parse_picture_bin};
 use crate::util::{parse_length_string, parse_u8_bool};
 
 use std::io::Read;
+use std::io::Write;
+use std::io;
+
+use std::collections::HashMap;
 
 #[derive(Debug, Default)]
 pub struct FloorPlan {
@@ -22,6 +26,14 @@ pub struct FloorPlan {
     pub y: usize,
     pub z: usize,
     pub data: Vec<u16>,
+}
+
+impl FloorPlan {
+    pub fn get(&self, x: usize, y: usize, z: usize) -> u16 {
+        let index = x * (self.y * self.z) + y * self.z + z;
+        
+        self.data[index]
+    }
 }
 
 #[derive(Debug, Default)]
@@ -119,6 +131,35 @@ impl Device {
         let mut file = Vec::new();
         r.read_to_end(&mut file).ok()?;
         dbg_dmp(parse_device, "device")(&file).ok().map(|(_i, d)| d)
+    }
+
+    pub fn dump_floorplan(&self, mut output: impl Write) -> io::Result<()> {
+        for i in 0..self.floorplan.z {
+            write!(output, "Array {}: \n", i)?;
+            for x in 0..self.floorplan.x {
+                for y in 0..self.floorplan.y {
+                    let val = self.floorplan.get(x, y, i) as usize;
+                    let val = val & 0xfff;
+                    let name = if val < self.cells.len() { &self.cells[val].name } else { "" };
+                    write!(output, "{:16} ", name)?;
+                }
+                write!(output, "\n")?;
+            }
+            write!(output, "\n")?;
+        }
+        let mut map = HashMap::<&[u16], usize>::new();
+        let mut types = 0;
+        write!(output, "\nTile Types: \n")?;
+        for i in 0..self.floorplan.x {
+            for j in 0..self.floorplan.y {
+                let index = i * self.floorplan.y * self.floorplan.z + j * self.floorplan.z;
+                let tile = &self.floorplan.data[index..index+self.floorplan.z];
+                let typ = map.entry(tile).or_insert_with(|| {let typ = types; types = types + 1; typ});
+                write!(output, "{:03} ", typ)?;
+            }
+            write!(output, "\n")?;
+        }
+        Ok(())
     }
 }
 

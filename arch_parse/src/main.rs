@@ -31,6 +31,9 @@ fn main() -> io::Result<()> {
                     arg!(-o --output <output>)
                         .required(false)
                         .value_parser(value_parser!(PathBuf)),
+                ).subcommand(
+                    Command::new("floorplan")
+                    .about("Dump the floorplan array from Debice Architecture Description")
                 ),
         )
         .subcommand(
@@ -60,7 +63,14 @@ fn main() -> io::Result<()> {
             };
 
             let device = Device::new(file).unwrap();
-            write!(output, "{device:#?}")?;
+
+            match dev_matches.subcommand() {
+                Some(("floorplan", _floorplan_matches)) => {
+                    device.dump_floorplan(output)?;
+                }
+                None => write!(output, "{device:#?}")?,
+                _ => unreachable!("No other subcommands"),
+            }
         }
         Some(("cfg", dev_matches)) => {
             let filepath = dev_matches.get_one::<PathBuf>("input").expect("required");
