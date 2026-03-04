@@ -33,7 +33,16 @@ fn main() -> io::Result<()> {
                         .value_parser(value_parser!(PathBuf)),
                 ).subcommand(
                     Command::new("floorplan")
-                    .about("Dump the floorplan array from Debice Architecture Description")
+                    .about("Dump the floorplan array from Device Architecture Description")
+                ).subcommand(
+                    Command::new("location")
+                    .about("Dump the cell name(s) from floorplan location in Device Architecture Description")
+                    .arg(arg!(<x>)
+                            .value_parser(value_parser!(usize)))
+                    .arg(arg!(<y>)
+                            .value_parser(value_parser!(usize)))
+                    .arg(arg!([z]).required(false)
+                            .value_parser(value_parser!(usize))),
                 ),
         )
         .subcommand(
@@ -67,6 +76,19 @@ fn main() -> io::Result<()> {
             match dev_matches.subcommand() {
                 Some(("floorplan", _floorplan_matches)) => {
                     device.dump_floorplan(output)?;
+                }
+                Some(("location", loc_matches)) => {
+                    let x = loc_matches
+                        .get_one::<usize>("x")
+                        .copied()
+                        .expect("required");
+                    let y = loc_matches
+                        .get_one::<usize>("y")
+                        .copied()
+                        .expect("required");
+                    let z = loc_matches.get_one::<usize>("z").copied();
+
+                    device.dump_location(output, x, y, z)?;
                 }
                 None => write!(output, "{device:#?}")?,
                 _ => unreachable!("No other subcommands"),

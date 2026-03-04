@@ -14,9 +14,9 @@ use crate::picture::{Picture, parse_picture_bin};
 
 use crate::util::{parse_length_string, parse_u8_bool};
 
+use std::io;
 use std::io::Read;
 use std::io::Write;
-use std::io;
 
 use std::collections::HashMap;
 
@@ -29,10 +29,14 @@ pub struct FloorPlan {
 }
 
 impl FloorPlan {
-    pub fn get(&self, x: usize, y: usize, z: usize) -> u16 {
-        let index = x * (self.y * self.z) + y * self.z + z;
-        
-        self.data[index]
+    pub fn get(&self, x: usize, y: usize, z: usize) -> Option<u16> {
+        if x >= self.x || y >= self.y || z >= self.z {
+            None
+        } else {
+            let index = x * (self.y * self.z) + y * self.z + z;
+
+            Some(self.data[index])
+        }
     }
 }
 
@@ -133,14 +137,20 @@ impl Device {
         dbg_dmp(parse_device, "device")(&file).ok().map(|(_i, d)| d)
     }
 
+    fn get_cell(&self, x: usize, y: usize, z: usize) -> Option<&Cell> {
+        self.floorplan.get(x, y, z).map(|t| {
+            let cell_type = t as usize;
+            let cell_type = cell_type & 0xfff;
+            self.cells.get(cell_type)
+        })?
+    }
+
     pub fn dump_floorplan(&self, mut output: impl Write) -> io::Result<()> {
         for i in 0..self.floorplan.z {
             write!(output, "Array {}: \n", i)?;
             for x in 0..self.floorplan.x {
                 for y in 0..self.floorplan.y {
-                    let val = self.floorplan.get(x, y, i) as usize;
-                    let val = val & 0xfff;
-                    let name = if val < self.cells.len() { &self.cells[val].name } else { "" };
+                    let name = self.get_cell(x, y, i).map_or("", |c| &c.name);
                     write!(output, "{:16} ", name)?;
                 }
                 write!(output, "\n")?;
@@ -153,13 +163,67 @@ impl Device {
         for i in 0..self.floorplan.x {
             for j in 0..self.floorplan.y {
                 let index = i * self.floorplan.y * self.floorplan.z + j * self.floorplan.z;
-                let tile = &self.floorplan.data[index..index+self.floorplan.z];
-                let typ = map.entry(tile).or_insert_with(|| {let typ = types; types = types + 1; typ});
+                let tile = &self.floorplan.data[index..index + self.floorplan.z];
+                let typ = map.entry(tile).or_insert_with(|| {
+                    let typ = types;
+                    types = types + 1;
+                    typ
+                });
                 write!(output, "{:03} ", typ)?;
             }
             write!(output, "\n")?;
         }
         Ok(())
+    }
+
+    pub fn dump_location(
+        &self,
+        mut output: impl Write,
+        x: usize,
+        y: usize,
+        z: Option<usize>,
+    ) -> io::Result<()> {
+        if x >= self.floorplan.x || y >= self.floorplan.y {
+            write!(output, "Location is outside of the grid")?;
+            Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Location is outside of the grid",
+            ))
+        } else {
+            match z {
+                Some(z) => {
+                    println!(
+                        "{} {} {}",
+                        self.floorplan.x, self.floorplan.y, self.floorplan.z
+                    );
+                    if z >= self.floorplan.z {
+                        write!(output, "z co-ord is out of range")?;
+                        Err(std::io::Error::new(
+                            std::io::ErrorKind::InvalidInput,
+                            "z co-ord is out of range",
+                        ))
+                    } else {
+                        write!(
+                            output,
+                            "x={} y={} z={}:\n{}",
+                            x,
+                            y,
+                            z,
+                            self.get_cell(x, y, z).map_or("", |c| &c.name)
+                        )?;
+                        Ok(())
+                    }
+                }
+                None => {
+                    write!(output, "x={} y={}:\n", x, y)?;
+                    for z in 0..self.floorplan.z {
+                        let cell_name = self.get_cell(x, y, z).map_or("", |c| &c.name);
+                        write!(output, "  {}: {}\n", z, cell_name)?;
+                    }
+                    Ok(())
+                }
+            }
+        }
     }
 }
 
@@ -259,9 +323,7 @@ fn parse_function(input: &[u8]) -> IResult<&[u8], Function> {
     ))
 }
 
-fn parse_bus_ref_array(
-    input: &[u8],
-) -> IResult<&[u8], Vec<BusRef>> {
+fn parse_bus_ref_array(input: &[u8]) -> IResult<&[u8], Vec<BusRef>> {
     let (input, elems) = map((be_u32, be_u32), |(x, _)| x as usize).parse(input)?;
     count(parse_bus_ref, elems).parse(input)
 }
@@ -417,21 +479,14 @@ fn parse_bus_element(input: &[u8]) -> IResult<&[u8], BusElement> {
 fn parse_bus_element_array(input: &[u8]) -> IResult<&[u8], Vec<BusElement>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, bus_elements) = count(
-        dbg_dmp(parse_bus_element, "bus_element"),
-        length,
-    )
-    .parse(input)?;
+    let (input, bus_elements) =
+        count(dbg_dmp(parse_bus_element, "bus_element"), length).parse(input)?;
     Ok((input, bus_elements))
 }
 
 fn parse_bus_element_vec3_array(input: &[u8]) -> IResult<&[u8], Vec<(u16, u16, u16)>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, vec3s) = count(
-        dbg_dmp(parse_3_be_u16, "vec3"),
-        length,
-    )
-    .parse(input)?;
+    let (input, vec3s) = count(dbg_dmp(parse_3_be_u16, "vec3"), length).parse(input)?;
     Ok((input, vec3s))
 }
