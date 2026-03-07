@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Tile - Project Glassworks</title>
+    </head>
+    <body>
+        <header>
+            <h1>Tile</h1>
+        </header>
+        <section>
+            {{ topzonet3t4 }}
+            <br />
+            {{ botzonet3t4 }}
+            <br />
+            {{ topzonet1t2 }}
+            <br />
+            {{ botzonet1t2 }}
+        </section>
+        <section>
+            <h2>wor.imux_2</h2>
+            {{ wor_imux_2 }}
+        </section>
+        <section>
+            <h2>wor.imux_1</h2>
+            {{ wor_imux_1 }}
+        </section>
+        <section>
+            <h2>wor.bmux</h2>
+            {{ wor_topbmux }}
+            <br />
+            {{ wor_botbmux }}
+        </section>
+        <section>
+            <h2>xnor1.imux_2</h2>
+            {{ xnor1_imux_2 }}
+        </section>
+        <section>
+            <h2>xnor1.imux_1</h2>
+            {{ xnor1_imux_1 }}
+        </section>
+        <section>
+            <h2>xnor1.bmux</h2>
+            {{ xnor1_topbmux }}
+            <br />
+            {{ xnor1_botbmux }}
+        </section>
+        <section>
+            <h2>ff.imux_2</h2>
+            {{ ff_imux_2 }}
+        </section>
+        <section>
+            <h2>ff.imux_1</h2>
+            {{ ff_imux_1 }}
+        </section>
+        <section>
+            <h2>xnor2.imux_2</h2>
+            {{ xnor2_imux_2 }}
+        </section>
+        <section>
+            <h2>xnor2.imux_1</h2>
+            {{ xnor2_imux_1 }}
+        </section>
+    </body>
+</html>

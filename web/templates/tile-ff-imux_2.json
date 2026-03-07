@@ -1,0 +1,10 @@
+[
+    { "name": "INV", "bits": 1, "type": 2 },
+    { "name": "FBB", "bits": 1, "type": 3 },
+    { "name": "F",   "bits": 1, "type": 3 },
+    { "name": "LL",  "bits": 1, "type": 3 },
+    { "name": "FB",  "bits": 1, "type": 3 },
+    { "name": "U",   "bits": 1, "type": 3 },
+    { "name": "M2H", "bits": 1, "type": 3 },
+    { "name": "M3V", "bits": 1, "type": 3 }
+]

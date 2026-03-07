@@ -1,0 +1,11 @@
+[
+    { "name": "ff.imux_2",      "bits": 8, "type": 4 },
+    { "name": "ff.func",        "bits": 1, "type": 4 },
+    { "name": "ff.x_switch",    "bits": 1, "type": 4 },
+    { "name": "ff.bmux",        "bits": 2, "type": 4 },
+
+    { "name": "xnor2.imux_2",   "bits": 8, "type": 5 },
+    { "name": "xnor2.func",     "bits": 1, "type": 5 },
+    { "name": "xnor2.x_switch", "bits": 1, "type": 5 },
+    { "name": "xnor2.bmux",     "bits": 2, "type": 5 }
+]
