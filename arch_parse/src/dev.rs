@@ -150,12 +150,19 @@ impl Device {
         dbg_dmp(parse_device, "device")(&file).ok().map(|(_i, d)| d)
     }
 
-    fn get_cell(&self, x: usize, y: usize, z: usize) -> Option<&Cell> {
-        self.floorplan.get(x, y, z).map(|t| {
-            let cell_type = t as usize;
-            let cell_type = cell_type & 0xfff;
-            self.cells.get(cell_type)
-        })?
+    fn get_cell_at_loc(&self, x: usize, y: usize, z: usize) -> Option<&Cell> {
+        self.floorplan.get(x, y, z).map(|t| self.get_cell(t))?
+    }
+
+    fn get_cell(&self, cell_id: u16) -> Option<&Cell> {
+        let cell_type = cell_id as usize;
+        let cell_type = cell_type & 0xfff;
+        self.cells.get(cell_type)
+    }
+
+    fn get_bus(&self, bus_index: u16) -> Option<&Bus> {
+        let bus_index = bus_index as usize;
+        self.busses.get(bus_index)?.as_ref()
     }
 
     pub fn dump_floorplan(&self, mut output: impl Write) -> io::Result<()> {
@@ -163,7 +170,7 @@ impl Device {
             write!(output, "Array {}: \n", i)?;
             for x in 0..self.floorplan.x {
                 for y in 0..self.floorplan.y {
-                    let name = self.get_cell(x, y, i).map_or("", |c| &c.name);
+                    let name = self.get_cell_at_loc(x, y, i).map_or("", |c| &c.name);
                     write!(output, "{:16} ", name)?;
                 }
                 write!(output, "\n")?;
@@ -222,7 +229,7 @@ impl Device {
                             x,
                             y,
                             z,
-                            self.get_cell(x, y, z).map_or("", |c| &c.name)
+                            self.get_cell_at_loc(x, y, z).map_or("", |c| &c.name)
                         )?;
                         Ok(())
                     }
@@ -230,13 +237,92 @@ impl Device {
                 None => {
                     write!(output, "x={} y={}:\n", x, y)?;
                     for z in 0..self.floorplan.z {
-                        let cell_name = self.get_cell(x, y, z).map_or("", |c| &c.name);
+                        let cell_name = self.get_cell_at_loc(x, y, z).map_or("", |c| &c.name);
                         write!(output, "  {}: {}\n", z, cell_name)?;
                     }
                     Ok(())
                 }
             }
         }
+    }
+
+    pub fn dump_cells(&self, mut output: impl Write) -> io::Result<()> {
+        for cell in &self.cells {
+            self.dump_cell(cell, &mut output)?;
+        }
+        Ok(())
+    }
+
+    pub fn dump_cell(&self, cell: &Cell, mut output: impl Write) -> io::Result<()> {
+        let margin = 4;
+        let margin_str = (0..margin).map(|_| " ").collect::<String>();
+        write!(
+            output,
+            "Cell: {} x={} y={} z={}\n",
+            cell.name, cell.triple.0, cell.triple.1, cell.triple.2
+        )?;
+        write!(output, "{}global: {}\n", margin_str, cell.global)?;
+        write!(output, "{}a={} b={}\n", margin_str, cell.a, cell.b)?;
+        write!(output, "{}functions:\n", margin_str)?;
+        for func in &cell.functions {
+            self.dump_function(margin + 4, func, cell.a, &mut output)?;
+        }
+        Ok(())
+    }
+
+    pub fn dump_function(
+        &self,
+        margin: usize,
+        func: &Function,
+        cell_a: u16,
+        mut output: impl Write,
+    ) -> io::Result<()> {
+        let margin_str = (0..margin).map(|_| " ").collect::<String>();
+        write!(output, "{}Func: {}\n", margin_str, func.name)?;
+        write!(
+            output,
+            "{}  a={} b={} flag={} c={:#x}\n",
+            margin_str, func.a, func.b, func.flag, func.c
+        )?;
+        if cell_a as usize != func.bus_refs.len() {
+            write!(
+                output,
+                "{}  BusRefs Length does not match Cell\n",
+                margin_str
+            )?;
+        }
+        for busref in &func.bus_refs {
+            self.dump_bus_ref(margin + 4, busref, &mut output)?;
+        }
+        Ok(())
+    }
+
+    pub fn dump_bus_ref(
+        &self,
+        margin: usize,
+        bus_ref: &BusRef,
+        mut output: impl Write,
+    ) -> io::Result<()> {
+        let margin_str = (0..margin).map(|_| " ").collect::<String>();
+        let bus = self.get_bus(bus_ref.a);
+        let bus_name = bus.map_or("<unknown>", |b| &b.name);
+        write!(output, "{}BusRef: target={}\n", margin_str, bus_name)?;
+        write!(
+            output,
+            "{}  a={} b={:#x} c={}\n",
+            margin_str, bus_ref.a, bus_ref.b, bus_ref.c
+        )?;
+        write!(
+            output,
+            "{}  {} {} {} {}\n",
+            margin_str,
+            if bus_ref.f1 { "inv" } else { "   " },
+            if bus_ref.f2 { "in" } else { "  " },
+            if bus_ref.f3 { "out" } else { "   " },
+            if bus_ref.f4 { "f4" } else { "  " },
+        )?;
+
+        Ok(())
     }
 }
 

@@ -43,6 +43,9 @@ fn main() -> io::Result<()> {
                             .value_parser(value_parser!(usize)))
                     .arg(arg!([z]).required(false)
                             .value_parser(value_parser!(usize))),
+                ).subcommand(
+                    Command::new("cells")
+                    .about("Dump the cell info")
                 ),
         )
         .subcommand(
@@ -89,6 +92,9 @@ fn main() -> io::Result<()> {
                     let z = loc_matches.get_one::<usize>("z").copied();
 
                     device.dump_location(output, x, y, z)?;
+                }
+                Some(("cells", _cells_matches)) => {
+                    device.dump_cells(output)?;
                 }
                 None => write!(output, "{device:#?}")?,
                 _ => unreachable!("No other subcommands"),
