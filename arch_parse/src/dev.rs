@@ -6,7 +6,7 @@ use nom::{
     combinator::{fail, map},
     error::{context, dbg_dmp},
     multi::{count, length_count},
-    number::complete::{be_u8, be_u16, be_u32},
+    number::complete::{be_i16, be_u8, be_u16, be_u32},
     sequence::preceded,
 };
 
@@ -44,7 +44,7 @@ impl FloorPlan {
 pub struct Cell {
     name: String,
     triple: (u16, u16, u16),
-    flag: bool,
+    global: bool,
     a: u16,
     b: u16,
     patterns: Vec<Pattern>,
@@ -52,12 +52,25 @@ pub struct Cell {
 }
 
 #[derive(Debug, Default)]
+pub struct PatternRange {
+    start: u16,
+    stop: u16,
+    step: u16,
+}
+
+impl PatternRange {
+    pub fn from_tuple((start, stop, step): (u16, u16, u16)) -> PatternRange {
+        PatternRange { start, stop, step }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Pattern {
     flag: bool,
     a: u16,
-    t1: (u16, u16, u16),
-    t2: (u16, u16, u16),
-    t3: (u16, u16, u16),
+    x: PatternRange,
+    y: PatternRange,
+    z: PatternRange,
 }
 
 #[derive(Debug, Default)]
@@ -111,7 +124,7 @@ pub struct Bus {
 pub struct BusElement {
     name: String,
     a: u32,
-    vec3s: Vec<(u16, u16, u16)>,
+    vec3s: Vec<(i16, i16, i16)>,
     pattern: Pattern,
     picture: Option<Picture>,
     quad_u16: (u16, u16, u16, u16),
@@ -274,6 +287,10 @@ fn parse_3_be_u16(input: &[u8]) -> IResult<&[u8], (u16, u16, u16)> {
     (be_u16, be_u16, be_u16).parse(input)
 }
 
+fn parse_3_be_i16(input: &[u8]) -> IResult<&[u8], (i16, i16, i16)> {
+    (be_i16, be_i16, be_i16).parse(input)
+}
+
 fn parse_pattern(input: &[u8]) -> IResult<&[u8], Pattern> {
     let (input, (flag, a, t1, t2, t3)) = (
         parse_u8_bool,
@@ -288,9 +305,9 @@ fn parse_pattern(input: &[u8]) -> IResult<&[u8], Pattern> {
         Pattern {
             flag,
             a,
-            t1,
-            t2,
-            t3,
+            x: PatternRange::from_tuple(t1),
+            y: PatternRange::from_tuple(t2),
+            z: PatternRange::from_tuple(t3),
         },
     ))
 }
@@ -388,7 +405,7 @@ fn parse_attribute(input: &[u8]) -> IResult<&[u8], Attribute> {
 pub fn parse_cell(input: &[u8]) -> IResult<&[u8], Cell> {
     let (input, (name, triple)) = (parse_length_string, parse_3_be_u16).parse(input)?;
     // This is only present if ver is > 1
-    let (input, flag) = be_u8(input)?;
+    let (input, global) = parse_u8_bool(input)?;
     //println!("Cell name: {}", name);
     let (input, (a, b)) = (be_u16, be_u16).parse(input)?;
     let (input, patterns) = length_count(be_u32, parse_pattern).parse(input)?;
@@ -402,7 +419,7 @@ pub fn parse_cell(input: &[u8]) -> IResult<&[u8], Cell> {
     let result = Cell {
         name,
         triple,
-        flag: flag == 0x1,
+        global,
         a,
         b,
         patterns,
@@ -484,9 +501,9 @@ fn parse_bus_element_array(input: &[u8]) -> IResult<&[u8], Vec<BusElement>> {
     Ok((input, bus_elements))
 }
 
-fn parse_bus_element_vec3_array(input: &[u8]) -> IResult<&[u8], Vec<(u16, u16, u16)>> {
+fn parse_bus_element_vec3_array(input: &[u8]) -> IResult<&[u8], Vec<(i16, i16, i16)>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, vec3s) = count(dbg_dmp(parse_3_be_u16, "vec3"), length).parse(input)?;
+    let (input, vec3s) = count(dbg_dmp(parse_3_be_i16, "vec3"), length).parse(input)?;
     Ok((input, vec3s))
 }
