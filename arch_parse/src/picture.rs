@@ -124,7 +124,7 @@ fn parse_poly_point(input: &[u8]) -> IResult<&[u8], Element> {
 }
 
 fn parse_poly_close(input: &[u8]) -> IResult<&[u8], Element> {
-    map(tag(LINETYPE), |_| Element::PolyClose).parse(input)
+    map(tag(POLYCLOSE), |_| Element::PolyClose).parse(input)
 }
 
 fn parse_element(input: &[u8]) -> IResult<&[u8], Element> {
