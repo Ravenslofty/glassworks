@@ -3,7 +3,7 @@
 use nom::{
     IResult, Parser,
     bytes::complete::tag,
-    combinator::{fail, map},
+    combinator::{cond, fail, map},
     error::{context, dbg_dmp},
     multi::{count, length_count},
     number::complete::{be_i16, be_u8, be_u16, be_u32},
@@ -12,7 +12,7 @@ use nom::{
 
 use crate::picture::{Picture, parse_picture_bin};
 
-use crate::util::{parse_length_string, parse_u8_bool};
+use crate::util::{parse_3_be_i16, parse_3_be_u16, parse_length_string, parse_u8_bool};
 
 use std::io;
 use std::io::Read;
@@ -81,7 +81,7 @@ pub struct Function {
     flag: bool,
     picture: Option<Picture>,
     bus_refs: Vec<BusRef>,
-    c: u32,
+    c: Option<u32>,
     attributes: Vec<Attribute>,
 }
 
@@ -94,7 +94,7 @@ pub struct BusRef {
     a: u16,
     b: u32,
     picture: Option<Picture>,
-    c: u32,
+    c: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -105,12 +105,24 @@ pub struct Attribute {
 
 #[derive(Debug, Default)]
 pub enum AttributeEnum {
-    ThreeDoubles(String, String, String),
-    StringList(Vec<String>), // Would have extra u32 with String if ver > 3
-    DoubleList(Vec<String>), // Would have extra u32 with Double String if ver > 3
+    AttrPattern(String, String, String),
+    AttrEnum(Vec<Enumerator>), // Would have extra u32 with String if ver > 3
+    AttrNumericEnum(Vec<NumericEnumerator>), // Would have extra u32 with Double String if ver > 3
     // Only in ver > 3 U32Pair(u32, u32),
     #[default]
     Empty,
+}
+
+#[derive(Debug, Default)]
+pub struct Enumerator {
+    name: String,
+    a: Option<u32>,
+}
+
+#[derive(Debug, Default)]
+pub struct NumericEnumerator {
+    dval: String,
+    a: Option<u32>,
 }
 
 #[derive(Debug, Default)]
@@ -281,7 +293,7 @@ impl Device {
         write!(output, "{}Func: {}\n", margin_str, func.name)?;
         write!(
             output,
-            "{}  a={} b={} flag={} c={:#x}\n",
+            "{}  a={} b={} flag={} c={:?}\n",
             margin_str, func.a, func.b, func.flag, func.c
         )?;
         if cell_a as usize != func.bus_refs.len() {
@@ -309,7 +321,7 @@ impl Device {
         write!(output, "{}BusRef: target={}\n", margin_str, bus_name)?;
         write!(
             output,
-            "{}  a={} b={:#x} c={}\n",
+            "{}  a={} b={:#x} c={:?}\n",
             margin_str, bus_ref.a, bus_ref.b, bus_ref.c
         )?;
         write!(
@@ -333,24 +345,25 @@ pub fn parse_device(input: &[u8]) -> IResult<&[u8], Device> {
     if ver > 5 {
         context("Version too high", fail::<_, &[u8], _>()).parse(input)?;
     }
-    // Only version 3 files are seen in current known software so exclude other cases
-    if ver != 3 {
-        context("Version mismatch", fail::<_, &[u8], _>()).parse(input)?;
+    // 2.3 has version 3 files, 2.4.4 has version 5
+    match ver {
+        3 | 5 => parse_device_inner(ver, input),
+        _ => context("Version mismatch", fail::<_, Device, _>()).parse(input),
     }
+}
+
+fn parse_device_inner(ver: u8, input: &[u8]) -> IResult<&[u8], super::Device> {
     let (input, (family, device)) = (parse_length_string, parse_length_string).parse(input)?;
     //println!("family: {:?} device: {:?}", family, device);
     let (input, picture) = dbg_dmp(parse_picture_bin, "picture")(input)?;
-    let (input, (x, y, z, _)) = (be_u32, be_u32, be_u32, be_u32).parse(input)?;
-    let (x, y, z) = (x as usize, y as usize, z as usize);
-    let (input, data) = count(be_u16, x * y * z).parse(input)?;
 
-    let floorplan = FloorPlan { x, y, z, data };
+    let (input, floorplan) = parse_floorplan(input)?;
 
-    let (input, cells) = parse_cell_array(input)?;
+    let (input, cells) = parse_cell_array(ver, input)?;
 
     let (input, busses) = parse_bus_array(input)?;
 
-    let (input, io_pins) = length_count(be_u32, (be_u16, be_u16, be_u16)).parse(input)?;
+    let (input, io_pins) = length_count(be_u32, parse_3_be_u16).parse(input)?;
 
     //println!("Cells: {} Buss: {} IoPins: {}", cells.len(), busses.len(), io_pins.len());
 
@@ -369,12 +382,50 @@ pub fn parse_device(input: &[u8]) -> IResult<&[u8], Device> {
     ))
 }
 
-fn parse_3_be_u16(input: &[u8]) -> IResult<&[u8], (u16, u16, u16)> {
-    (be_u16, be_u16, be_u16).parse(input)
+fn parse_floorplan(input: &[u8]) -> IResult<&[u8], FloorPlan> {
+    let (input, (x, y, z, _)) = (be_u32, be_u32, be_u32, be_u32).parse(input)?;
+    let (x, y, z) = (x as usize, y as usize, z as usize);
+    let (input, data) = count(be_u16, x * y * z).parse(input)?;
+
+    Ok((input, FloorPlan { x, y, z, data }))
 }
 
-fn parse_3_be_i16(input: &[u8]) -> IResult<&[u8], (i16, i16, i16)> {
-    (be_i16, be_i16, be_i16).parse(input)
+fn parse_cell_array(ver: u8, input: &[u8]) -> IResult<&[u8], Vec<Cell>> {
+    let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
+    let length = length as usize;
+    let (input, cells) = count(dbg_dmp(|i| parse_cell(ver, i), "cell"), length).parse(input)?;
+    Ok((input, cells))
+}
+
+pub fn parse_cell(ver: u8, input: &[u8]) -> IResult<&[u8], Cell> {
+    let (input, (name, triple)) = (parse_length_string, parse_3_be_u16).parse(input)?;
+    // This is only present if ver is > 1
+    let (input, global) = parse_u8_bool(input)?;
+    //println!("Cell name: {}", name);
+    let (input, (a, b)) = (be_u16, be_u16).parse(input)?;
+    let (input, patterns) = length_count(be_u32, parse_pattern).parse(input)?;
+    let (input, functions_present) = be_u8(input)?;
+    let (input, functions) = if functions_present != 0 {
+        let (input, elems) = map((be_u32, be_u32), |(elems, _elem_size)| elems).parse(input)?;
+        count(
+            dbg_dmp(|i| parse_function(ver, i), "function"),
+            elems as usize,
+        )
+        .parse(input)?
+    } else {
+        (input, vec![])
+    };
+    let result = Cell {
+        name,
+        triple,
+        global,
+        a,
+        b,
+        patterns,
+        functions,
+    };
+    //println!("{:#?}", result);
+    Ok((input, result))
 }
 
 fn parse_pattern(input: &[u8]) -> IResult<&[u8], Pattern> {
@@ -398,19 +449,20 @@ fn parse_pattern(input: &[u8]) -> IResult<&[u8], Pattern> {
     ))
 }
 
-fn parse_function(input: &[u8]) -> IResult<&[u8], Function> {
+fn parse_function(ver: u8, input: &[u8]) -> IResult<&[u8], Function> {
     let (input, (name, a, b, flag, picture, bus_refs, c, attributes)) = (
         parse_length_string,
         be_u8,
         be_u32,
         parse_u8_bool,
         parse_picture_bin,
-        dbg_dmp(parse_bus_ref_array, "bus_refs"),
-        be_u32,
-        //This is only present if ver is >2
-        length_count(be_u32, dbg_dmp(parse_attribute, "attribute")),
+        dbg_dmp(|i| parse_bus_ref_array(ver, i), "bus_refs"),
+        // only present before version 5
+        cond(ver < 5, be_u32),
+        length_count(be_u32, dbg_dmp(|i| parse_attribute(ver, i), "attribute")),
     )
         .parse(input)?;
+
     Ok((
         input,
         Function {
@@ -426,12 +478,12 @@ fn parse_function(input: &[u8]) -> IResult<&[u8], Function> {
     ))
 }
 
-fn parse_bus_ref_array(input: &[u8]) -> IResult<&[u8], Vec<BusRef>> {
+fn parse_bus_ref_array(ver: u8, input: &[u8]) -> IResult<&[u8], Vec<BusRef>> {
     let (input, elems) = map((be_u32, be_u32), |(x, _)| x as usize).parse(input)?;
-    count(parse_bus_ref, elems).parse(input)
+    count(|i| parse_bus_ref(ver, i), elems).parse(input)
 }
 
-fn parse_bus_ref(input: &[u8]) -> IResult<&[u8], BusRef> {
+fn parse_bus_ref(ver: u8, input: &[u8]) -> IResult<&[u8], BusRef> {
     let (input, (f1, f2, f3, f4, a, b, picture, c)) = (
         parse_u8_bool,
         parse_u8_bool,
@@ -441,7 +493,7 @@ fn parse_bus_ref(input: &[u8]) -> IResult<&[u8], BusRef> {
         be_u32,
         parse_picture_bin,
         // Only present before version 5
-        be_u32,
+        cond(ver < 5, be_u32),
     )
         .parse(input)?;
 
@@ -460,7 +512,7 @@ fn parse_bus_ref(input: &[u8]) -> IResult<&[u8], BusRef> {
     ))
 }
 
-fn parse_attribute(input: &[u8]) -> IResult<&[u8], Attribute> {
+fn parse_attribute(ver: u8, input: &[u8]) -> IResult<&[u8], Attribute> {
     let (input, (kind, typ)) = (be_u8, be_u8).parse(input)?;
     //println!("attribute type: {typ}");
     let (input, val) = match typ {
@@ -470,16 +522,18 @@ fn parse_attribute(input: &[u8]) -> IResult<&[u8], Attribute> {
                 parse_length_string,
                 parse_length_string,
             ),
-            |(x, y, z)| AttributeEnum::ThreeDoubles(x, y, z),
+            |(x, y, z)| AttributeEnum::AttrPattern(x, y, z),
         )
         .parse(input)?,
-        1 => map(length_count(be_u32, parse_length_string), |v| {
-            AttributeEnum::StringList(v)
-        })
-        .parse(input)?, // Would include a u32 in the list content if ver > 3
-        2 => map(length_count(be_u32, parse_length_string), |v| {
-            AttributeEnum::DoubleList(v)
-        })
+        1 => map(
+            length_count(be_u32, |i| parse_attr_enumerator(ver, i)),
+            |v| AttributeEnum::AttrEnum(v),
+        )
+        .parse(input)?,
+        2 => map(
+            length_count(be_u32, |i| parse_attr_numeric_enumerator(ver, i)),
+            |v| AttributeEnum::AttrNumericEnum(v),
+        )
         .parse(input)?, // Would include a u32 in the list content if ver > 3
         // 3 => Would have two u32s if ver > 3
         _ => fail::<_, AttributeEnum, _>().parse(input)?,
@@ -488,38 +542,23 @@ fn parse_attribute(input: &[u8]) -> IResult<&[u8], Attribute> {
     Ok((input, Attribute { kind, val }))
 }
 
-pub fn parse_cell(input: &[u8]) -> IResult<&[u8], Cell> {
-    let (input, (name, triple)) = (parse_length_string, parse_3_be_u16).parse(input)?;
-    // This is only present if ver is > 1
-    let (input, global) = parse_u8_bool(input)?;
-    //println!("Cell name: {}", name);
-    let (input, (a, b)) = (be_u16, be_u16).parse(input)?;
-    let (input, patterns) = length_count(be_u32, parse_pattern).parse(input)?;
-    let (input, functions_present) = be_u8(input)?;
-    let (input, functions) = if functions_present != 0 {
-        let (input, elems) = map((be_u32, be_u32), |(elems, _elem_size)| elems).parse(input)?;
-        count(dbg_dmp(parse_function, "function"), elems as usize).parse(input)?
-    } else {
-        (input, vec![])
-    };
-    let result = Cell {
-        name,
-        triple,
-        global,
-        a,
-        b,
-        patterns,
-        functions,
-    };
-    //println!("{:#?}", result);
-    Ok((input, result))
+fn parse_attr_enumerator(ver: u8, input: &[u8]) -> IResult<&[u8], Enumerator> {
+    let (input, (name, a)) = (parse_length_string, cond(ver > 3, be_u32)).parse(input)?;
+
+    Ok((input, Enumerator { name, a }))
 }
 
-fn parse_cell_array(input: &[u8]) -> IResult<&[u8], Vec<Cell>> {
+fn parse_attr_numeric_enumerator(ver: u8, input: &[u8]) -> IResult<&[u8], NumericEnumerator> {
+    let (input, (dval, a)) = (parse_length_string, cond(ver > 3, be_u32)).parse(input)?;
+
+    Ok((input, NumericEnumerator { dval, a }))
+}
+
+fn parse_bus_array(input: &[u8]) -> IResult<&[u8], Vec<Option<Bus>>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, cells) = count(dbg_dmp(parse_cell, "cell"), length).parse(input)?;
-    Ok((input, cells))
+    let (input, busses) = count(dbg_dmp(parse_bus, "bus"), length).parse(input)?;
+    Ok((input, busses))
 }
 
 fn parse_bus(input: &[u8]) -> IResult<&[u8], Option<Bus>> {
@@ -547,11 +586,12 @@ fn parse_bus(input: &[u8]) -> IResult<&[u8], Option<Bus>> {
     }
 }
 
-fn parse_bus_array(input: &[u8]) -> IResult<&[u8], Vec<Option<Bus>>> {
+fn parse_bus_element_array(input: &[u8]) -> IResult<&[u8], Vec<BusElement>> {
     let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
     let length = length as usize;
-    let (input, busses) = count(dbg_dmp(parse_bus, "bus"), length).parse(input)?;
-    Ok((input, busses))
+    let (input, bus_elements) =
+        count(dbg_dmp(parse_bus_element, "bus_element"), length).parse(input)?;
+    Ok((input, bus_elements))
 }
 
 fn parse_bus_element(input: &[u8]) -> IResult<&[u8], BusElement> {
@@ -577,14 +617,6 @@ fn parse_bus_element(input: &[u8]) -> IResult<&[u8], BusElement> {
             b,
         },
     ))
-}
-
-fn parse_bus_element_array(input: &[u8]) -> IResult<&[u8], Vec<BusElement>> {
-    let (input, (length, _elem_size)) = (be_u32, be_u32).parse(input)?;
-    let length = length as usize;
-    let (input, bus_elements) =
-        count(dbg_dmp(parse_bus_element, "bus_element"), length).parse(input)?;
-    Ok((input, bus_elements))
 }
 
 fn parse_bus_element_vec3_array(input: &[u8]) -> IResult<&[u8], Vec<(i16, i16, i16)>> {
